@@ -283,6 +283,7 @@ exports.create = (databaseUrl) ->
     metaFields = Object.keys(paths).map (key) ->
       name: (if key == '_id' then 'id' else key)
       readonly: key == '_id' || !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
+      required: !!paths[key].options.required
       type: typeMap[paths[key].instance] || 'unknown'
     _.sortBy(metaFields, 'name')
 
