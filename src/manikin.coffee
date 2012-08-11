@@ -1,10 +1,9 @@
 async = require 'async'
 _ = require 'underscore'
 mongoose = require 'mongoose'
-underline = require 'underline'
 mongojs = require 'mongojs'
 ObjectId = mongoose.Schema.ObjectId
-
+_.mixin require 'underscore.plus'
 
 exports.create = (databaseUrl) ->
 
@@ -165,7 +164,7 @@ exports.create = (databaseUrl) ->
       return
 
     filter = preprocFilter(filter)
-    finalFilter = _.extend({}, filter, underline.makeObject(outer, id))
+    finalFilter = _.extend({}, filter, _.makeObject(outer, id))
 
     models[model].find finalFilter, callback
 
@@ -177,7 +176,7 @@ exports.create = (databaseUrl) ->
   api.delMany = (primaryModel, primaryId, propertyName, secondaryModel, secondaryId, callback) ->
     models[primaryModel].findById primaryId, propagate callback, (data) ->
       conditions = { _id: primaryId }
-      update = { $pull: underline.makeObject(propertyName, secondaryId) }
+      update = { $pull: _.makeObject(propertyName, secondaryId) }
       options = { }
       models[primaryModel].update conditions, update, options, (err, numAffected) ->
         callback(err)
@@ -200,7 +199,7 @@ exports.create = (databaseUrl) ->
       callback err, massage(story[propertyName])
 
   api.getManyBackwards = (model, id, propertyName, callback) ->
-    db[model].find underline.makeObject(propertyName, new db.bson.ObjectID(id.toString())), (err, result) ->
+    db[model].find _.makeObject(propertyName, new db.bson.ObjectID(id.toString())), (err, result) ->
       callback(err, massage(result))
 
 
