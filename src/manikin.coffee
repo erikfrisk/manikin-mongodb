@@ -305,12 +305,19 @@ exports.create = (databaseUrl) ->
       ObjectID: 'string'
       String: 'string'
       Number: 'number'
+      Boolean: 'boolean'
+      Date: 'date'
     paths = models[modelName].schema.paths
+
+    typeFunc = (x) ->
+      return 'boolean' if x == Boolean
+      return 'date' if x == Date
+
     metaFields = Object.keys(paths).map (key) ->
       name: (if key == '_id' then 'id' else key)
       readonly: key == '_id' || !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
       required: !!paths[key].options.required
-      type: typeMap[paths[key].instance] || 'unknown'
+      type: typeMap[paths[key].instance] || typeFunc(paths[key].options.type) || 'unknown'
     _.sortBy(metaFields, 'name')
 
   api.getOwners = (modelName) ->
