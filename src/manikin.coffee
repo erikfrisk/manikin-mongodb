@@ -142,17 +142,37 @@ exports.create = (databaseUrl) ->
 
   # Sub-methods
   # ===========
-  api.post = (model, data, callback) ->
-    new models[model](data).save (err) ->
-      if err && err.code == 11000
-        fieldMatch = err.err.match(/\$([a-zA-Z]+)_1/)
-        valueMatch = err.err.match(/"([a-zA-Z]+)"/)
-        if fieldMatch && valueMatch
-          callback("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}")
+  api.post = (model, indata, callback) ->
+
+    saveFunc = (data) ->
+      new models[model](data).save (err) ->
+        if err && err.code == 11000
+          fieldMatch = err.err.match(/\$([a-zA-Z]+)_1/)
+          valueMatch = err.err.match(/"([a-zA-Z]+)"/)
+          if fieldMatch && valueMatch
+            callback("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}")
+          else
+            callback("Unique constraint violated")
         else
-          callback("Unique constraint violated")
-      else
-        massaged(callback).apply(this, arguments)
+          massaged(callback).apply(this, arguments)
+
+
+
+    ownersRaw = api.getOwners(model)
+    owners = _(ownersRaw).pluck('plur')
+    ownersOwners = _(owners.map (x) -> api.getOwners(x)).flatten()
+
+    if ownersOwners.length == 0
+      saveFunc indata
+    else
+      # Should get all the owners and not just the first.
+      # At the moment Im only working with single owners though, so it's for for now...
+      api.getOne owners[0], { id: indata[ownersRaw[0].sing] }, (err, ownerdata) ->
+        paths = models[owners[0]].schema.paths
+        metaFields = Object.keys(paths).filter (key) -> !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
+        metaFields.forEach (key) ->
+          indata[key] = ownerdata[key]
+        saveFunc indata
 
   internalListSub = (model, outer, id, filter, callback) ->
     if !callback?
@@ -225,6 +245,11 @@ exports.create = (databaseUrl) ->
         tgt[key].default = src[key].default if src[key].default?
         tgt[key].index = src[key].index if src[key].index?
         tgt[key].unique = src[key].unique if src[key].unique?
+      else if src[key].type == 'date'
+        tgt[key] = { type: Date, required: !!src[key].required }
+        tgt[key].default = src[key].default if src[key].default?
+        tgt[key].index = src[key].index if src[key].index?
+        tgt[key].unique = src[key].unique if src[key].unique?
       else if src[key].type == 'boolean'
         tgt[key] = { type: Boolean, required: !!src[key].required }
         tgt[key].default = src[key].default if src[key].default?
@@ -249,15 +274,17 @@ exports.create = (databaseUrl) ->
       spec[ownerName] =
         type: ObjectId
         ref: owners[ownerName]
+        required: true
         'x-owner': true
 
     # set indirect owners (SHOULD use the full list of models, rather than depend on that indirect owners have been created already)
     Object.keys(owners).forEach (ownerName) ->
       paths = models[owners[ownerName]].schema.paths
-      Object.keys(paths).filter((p) -> paths[p].options['x-owner']).forEach (p) ->
+      Object.keys(paths).filter((p) -> paths[p].options['x-owner'] || paths[p].options['x-indirect-owner']).forEach (p) ->
         spec[p] =
           type: ObjectId
           ref: paths[p].options.ref
+          required: true
           'x-indirect-owner': true
 
     Object.keys(spec).forEach (fieldName) ->
