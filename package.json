@@ -9,6 +9,7 @@
   },
   "scripts": {
     "pretest": "coffee -c -o lib src",
+    "prepublish": "coffee -c -o lib src",
     "posttest": "rm -r lib",
     "test": "mocha -r should --compilers coffee:coffee-script spec/*.coffee",
     "prestart": "coffee -c -o lib src"
