@@ -10,6 +10,7 @@ exports.create = (databaseUrl) ->
   db = null
   api = {}
   models = {}
+  meta = {}
   api.ObjectId = ObjectId
 
   propagate = (callback, f) ->
@@ -77,7 +78,10 @@ exports.create = (databaseUrl) ->
 
     filter = preprocFilter(filter)
 
-    models[model].find filter, massaged(callback)
+    rr = models[model].find(filter)
+    if meta[model].defaultSort?
+      rr = rr.sort(meta[model].defaultSort, 1)
+    rr.exec(massaged(callback))
 
   api.getOne = (model, filter, callback) ->
     if !callback?
@@ -290,6 +294,8 @@ exports.create = (databaseUrl) ->
     Object.keys(spec).forEach (fieldName) ->
       if spec[fieldName].ref?
         spec[fieldName].type = ObjectId
+
+    meta[name] = { defaultSort: conf.defaultSort }
 
     models[name] = model name, spec
 
