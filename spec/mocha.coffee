@@ -26,6 +26,7 @@ it "should have the right methods", ->
   ]
 
 
+
 it "should allow model definitions", ->
   api = manikin.create()
 
@@ -39,6 +40,7 @@ it "should allow model definitions", ->
     fields: {}
 
   api.getModels().should.eql ['surveys', 'questions']
+
 
 
 it "should not be ok to post without speicfiying the owner", (done) ->
@@ -64,6 +66,7 @@ it "should not be ok to post without speicfiying the owner", (done) ->
       api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
         should.exist err # expect something more precise here...
         done()
+
 
 
 
@@ -96,7 +99,6 @@ it "should introduce redundant references to all ancestors", (done) ->
       contact: 'contacts'
     fields:
       race: { type: 'string', default: '' }
-
 
   api.connect 'mongodb://localhost/manikin-test', (err) ->
     should.not.exist err
