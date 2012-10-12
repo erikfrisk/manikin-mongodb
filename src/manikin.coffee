@@ -5,7 +5,7 @@ mongojs = require 'mongojs'
 ObjectId = mongoose.Schema.ObjectId
 _.mixin require 'underscore.plus'
 
-exports.create = (databaseUrl) ->
+exports.create = ->
 
   db = null
   api = {}
