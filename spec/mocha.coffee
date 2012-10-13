@@ -20,6 +20,7 @@ it "should have the right methods", ->
     'getMany'
     'getManyBackwards'
     'defModel'
+    'defModels'
     'getMetaFields'
     'getOwners'
     'getOwnedModels'

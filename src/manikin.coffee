@@ -270,6 +270,10 @@ exports.create = ->
       else
         throw "Invalid type: " + src[key].type
 
+  api.defModels = (models) ->
+    Object.keys(models).forEach (modelName) ->
+      api.defModel modelName, models[modelName]
+
   api.defModel = (name, conf) ->
 
     spec = {}
