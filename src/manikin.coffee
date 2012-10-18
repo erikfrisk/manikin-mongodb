@@ -11,7 +11,6 @@ exports.create = ->
   api = {}
   models = {}
   meta = {}
-  api.ObjectId = ObjectId
 
   propagate = (callback, f) ->
     (err, args...) ->
@@ -97,7 +96,8 @@ exports.create = ->
         else
           callback(err)
         return
-      callback((if !data? then "No such id"), massage(data))
+      return callback(new Error("No match")) if !data?
+      callback null, massage(data)
 
   api.delOne = (model, filter, callback) ->
     if !callback?
@@ -162,9 +162,9 @@ exports.create = ->
 
 
 
-    ownersRaw = api.getOwners(model)
+    ownersRaw = getOwners(model)
     owners = _(ownersRaw).pluck('plur')
-    ownersOwners = _(owners.map (x) -> api.getOwners(x)).flatten()
+    ownersOwners = _(owners.map (x) -> getOwners(x)).flatten()
 
     if ownersOwners.length == 0
       saveFunc indata
@@ -314,7 +314,7 @@ exports.create = ->
 
 
 
-  api.getMetaFields = (modelName) ->
+  getMetaFields = (modelName) ->
     typeMap =
       ObjectID: 'string'
       String: 'string'
@@ -334,29 +334,34 @@ exports.create = ->
       type: typeMap[paths[key].instance] || typeFunc(paths[key].options.type) || 'unknown'
     _.sortBy(metaFields, 'name')
 
-  api.getOwners = (modelName) ->
+  getOwners = (modelName) ->
     paths = models[modelName].schema.paths
     outers = Object.keys(paths).filter((x) -> paths[x].options['x-owner']).map (x) ->
       plur: paths[x].options.ref
       sing: x
     outers
 
-  api.getOwnedModels = (ownerModelName) ->
+  getOwnedModels = (ownerModelName) ->
     _.flatten Object.keys(models).map (modelName) ->
       paths = models[modelName].schema.paths
       Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && paths[x].options.ref == ownerModelName && paths[x].options['x-owner']).map (x) ->
         name: modelName
         field: x
 
-  api.getManyToMany = (modelName) ->
+  getManyToMany = (modelName) ->
     paths = models[modelName].schema.paths
     manyToMany = Object.keys(paths).filter((x) -> Array.isArray paths[x].options.type).map (x) ->
       ref: paths[x].options.type[0].ref
       name: x
     manyToMany
 
+  api.getMeta = (modelName) ->
+    fields: getMetaFields(modelName)
+    owns: getOwnedModels(modelName)
+    owners: getOwners(modelName)
+    manyToMany: getManyToMany(modelName)
 
-  api.getModels = () ->
+  api.getModels = ->
     Object.keys(models)
 
 
