@@ -235,6 +235,8 @@ exports.create = ->
     keys.forEach (key) ->
       if !src[key].type?
         throw "must assign a type: " + JSON.stringify(keys)
+      else if src[key].type == 'mixed'
+        tgt[key] = { type: mongoose.Schema.Types.Mixed }
       else if src[key].type == 'nested'
         tgt[key] = {}
         specTransform(tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))

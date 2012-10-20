@@ -115,6 +115,26 @@ it "should allow model definitions in bulk", ->
 
 
 
+
+it "should allow mixed properties in models definitions", (done) ->
+  api = manikin.create()
+
+  api.defModel 'stuffs',
+    owners: {}
+    fields:
+      name: { type: 'string' }
+      stats: { type: 'mixed' }
+
+  api.connect 'mongodb://localhost/manikin-test-0', (err) ->
+    should.not.exist err
+    api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, (err, survey) ->
+      should.not.exist err
+      survey.should.have.keys ['id', 'name', 'stats']
+      survey.stats.should.have.keys ['s1', 's2']
+      done()
+
+
+
 it "should provide an interface for meta data", ->
   api = manikin.create()
 
