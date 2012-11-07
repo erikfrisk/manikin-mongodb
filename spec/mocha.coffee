@@ -21,6 +21,7 @@ it "should have the right methods", ->
     # support-methods
     'isValidId'
     'connect'
+    'close'
 
     # model operations
     'post'
@@ -40,7 +41,7 @@ promise = (api) ->
   obj = {}
   queue = []
   running = false
-  methods = ['connect', 'post', 'list', 'getOne', 'delOne', 'putOne', 'getMany', 'delMany', 'postMany', 'getBackBackwards']
+  methods = ['connect', 'close', 'post', 'list', 'getOne', 'delOne', 'putOne', 'getMany', 'delMany', 'postMany', 'getBackBackwards']
 
   invoke = (method, args, cb) ->
     method args..., ->
@@ -214,7 +215,7 @@ describe 'Manikin', ->
         should.not.exist err
         survey.should.have.keys ['id', 'name', 'stats']
         survey.stats.should.have.keys ['s1', 's2']
-        done()
+        api.close(done)
 
 
 
@@ -232,6 +233,12 @@ describe 'Manikin', ->
       fields:
         name: { type: 'string', default: '' }
         orgnr: { type: 'string', default: '' }
+
+    api.defModel 'employees',
+      owners:
+        company: 'companies'
+      fields:
+        name: { type: 'string', default: '' }
 
     api.defModel 'customers'
       fields:
@@ -262,14 +269,37 @@ describe 'Manikin', ->
     .then 'getOne', -> @ 'accounts', { name: 'does-not-exist' }, (err, acc) ->
       err.toString().should.eql 'Error: No match'
       should.not.exist acc
-    .then done
+
+    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, (err, company) ->
+      should.not.exist err
+      company.should.have.keys ['name', 'orgnr', 'account', 'id']
+      saved.c1 = company
+    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, (err, company) ->
+      should.not.exist err
+      company.should.have.keys ['name', 'orgnr', 'account', 'id']
+      saved.c2 = company
+    .then 'post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, (err, company) ->
+      should.not.exist err
+      company.should.have.keys ['name', 'company', 'account', 'id']
+
+    # testing to get an account without nesting
+    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, (err, acc) ->
+      _(acc).omit('id').should.eql { name: 'n1' }
+
+    # testing to get an account with nesting
+    .then 'getOne', -> @ 'accounts', { nesting: 1, filter: { id: saved.a1.id } }, (err, acc) ->
+      _(acc).omit('id').should.eql { name: 'n1' }
+
+
+    .then ->
+      api.close(done)
   
 
 
 
 
 
-  it "should not be ok to post without speicfiying the owner", (done) ->
+  it "should not be ok to post without specifiying the owner", (done) ->
     api = manikin.create()
 
     api.defModel 'accounts',
@@ -291,7 +321,7 @@ describe 'Manikin', ->
         account.should.have.keys ['name', 'id']
         api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
           should.exist err # expect something more precise here...
-          done()
+          api.close(done)
 
 
 
@@ -323,7 +353,8 @@ describe 'Manikin', ->
             err.message.should.eql 'Validation failed'
             err.errors.name.path.should.eql 'name'
           callback()
-      , done
+      , ->
+        api.close(done)
 
 
 
@@ -369,4 +400,4 @@ describe 'Manikin', ->
             api.post 'pets', { race: 'dog', contact: contact.id }, (err, pet) ->
               should.not.exist err
               pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
-              done()
+              api.close(done)

@@ -22,6 +22,7 @@ exports.create = ->
   model = (name, schema) ->
     ss = new mongoose.Schema schema,
       strict: true
+    ss.set('versionKey', false)
     mongoose.model name, ss
 
   api.isValidId = (id) ->
@@ -67,6 +68,10 @@ exports.create = ->
       callback(err)
 
 
+  api.close = (callback) ->
+    mongoose.connection.close()
+    callback()
+
 
   # The five base methods
   # =====================
@@ -82,12 +87,15 @@ exports.create = ->
       rr = rr.sort(meta[model].defaultSort, 1)
     rr.exec(massaged(callback))
 
-  api.getOne = (model, filter, callback) ->
+  api.getOne = (model, config, callback) ->
     if !callback?
-      callback = filter
-      filter = {}
+      callback = config
+      config = {}
 
     filter = preprocFilter(filter)
+    config = { filter: config } if !config.filter? # hack for backwards compatibility
+
+    filter = preprocFilter(config.filter)
 
     models[model].findOne filter, (err, data) ->
       if err
@@ -394,7 +402,7 @@ exports.create = ->
 
   preRemoveCascadeNonNullable = (owner, id, next) ->
 
-    flattenedModels = api.getOwnedModels(owner.modelName)
+    flattenedModels = getOwnedModels(owner.modelName)
 
     async.forEach flattenedModels, (mod, callback) ->
       internalListSub mod.name, mod.field, id, (err, data) ->
