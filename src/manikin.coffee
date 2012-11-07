@@ -84,7 +84,7 @@ exports.create = ->
 
     rr = models[model].find(filter)
     if meta[model].defaultSort?
-      rr = rr.sort(meta[model].defaultSort, 1)
+      rr = rr.sort _.object [[meta[model].defaultSort, 'asc']]
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->

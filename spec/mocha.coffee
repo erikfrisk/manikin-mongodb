@@ -219,6 +219,32 @@ describe 'Manikin', ->
 
 
 
+  it "should allow default sorting orders", (done) ->
+    api = manikin.create()
+
+    api.defModel 'warez',
+      owners: {}
+      defaultSort: 'name'
+      fields:
+        name: { type: 'string' }
+        stats: { type: 'mixed' }
+
+    promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
+      should.not.exist err
+    .post 'warez', { name: 'jakob', stats: 1 }, (err) ->
+      should.not.exist err
+    .post 'warez', { name: 'erik', stats: 2 }, (err) ->
+      should.not.exist err
+    .post 'warez', { name: 'julia', stats: 3 }, (err) ->
+      should.not.exist err
+    .list 'warez', (err, list) ->
+      names = list.map (x) -> x.name
+      names.should.eql ['erik', 'jakob', 'julia']
+    .then ->
+      api.close(done)
+
+
+
   it "should allow simplified field declarations (specifying type only)", (done) ->
     api = manikin.create()
 
