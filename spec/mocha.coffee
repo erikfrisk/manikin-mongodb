@@ -219,6 +219,26 @@ describe 'Manikin', ->
 
 
 
+  it "should allow simplified field declarations (specifying type only)", (done) ->
+    api = manikin.create()
+
+    api.defModel 'leet',
+      owners: {}
+      fields:
+        firstName: 'string'
+        lastName: { type: 'string' }
+        age: 'number'
+
+    api.connect 'mongodb://localhost/manikin-test', (err) ->
+      should.not.exist err
+      api.post 'leet', { firstName: 'jakob', lastName: 'mattsson', age: 27 }, (err, survey) ->
+        should.not.exist err
+        survey.should.have.keys ['id', 'firstName', 'lastName', 'age']
+        survey.should.eql { id: survey.id, firstName: 'jakob', lastName: 'mattsson', age: 27 }
+        api.close(done)
+
+
+
   it "should provide some typical http-operations", (done) ->
     api = manikin.create()
 

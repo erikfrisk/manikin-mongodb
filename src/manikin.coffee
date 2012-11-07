@@ -241,7 +241,11 @@ exports.create = ->
 
   specTransform = (tgt, src, keys) ->
     keys.forEach (key) ->
-      if !src[key].type?
+      if typeof src[key] == 'string'
+        obj = {}
+        obj[key] = { type: src[key] }
+        specTransform(tgt, obj, [key])
+      else if !src[key].type?
         throw "must assign a type: " + JSON.stringify(keys)
       else if src[key].type == 'mixed'
         tgt[key] = { type: mongoose.Schema.Types.Mixed }
