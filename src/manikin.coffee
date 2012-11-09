@@ -88,10 +88,6 @@ exports.create = ->
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->
-    if !callback?
-      callback = config
-      config = {}
-
     filter = preprocFilter(filter)
     config = { filter: config } if !config.filter? # hack for backwards compatibility
 
@@ -100,32 +96,24 @@ exports.create = ->
     models[model].findOne filter, (err, data) ->
       if err
         if err.toString() == 'Error: Invalid ObjectId'
-          callback("No such id")
+          callback(new Error('No such id'))
         else
           callback(err)
         return
-      return callback(new Error("No match")) if !data?
+      return callback(new Error('No match')) if !data?
       callback null, massage(data)
 
   api.delOne = (model, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
     filter = preprocFilter(filter)
 
     models[model].findOne filter, propagate callback, (d) ->
       if !d?
-        callback "No such id"
+        callback(new Error('No such id'))
       else
         d.remove (err) ->
           callback err, if !err then massage(d)
 
   api.putOne = (modelName, data, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
     filter = preprocFilter(filter)
 
     model = models[modelName]
@@ -259,7 +247,7 @@ exports.create = ->
         obj[key] = { type: src[key] }
         specTransform(allspec, modelName, tgt, obj, [key])
       else if !src[key].type?
-        throw "must assign a type: " + JSON.stringify(keys)
+        throw new Error("must assign a type: " + JSON.stringify(keys))
       else if src[key].type == 'mixed'
         tgt[key] = { type: mongoose.Schema.Types.Mixed }
       else if src[key].type == 'nested'
@@ -296,7 +284,7 @@ exports.create = ->
         tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName || key }]
         allspec[src[key].model][src[key].inverseName || key] = [{ type: ObjectId, ref: modelName, inverseName: key }]
       else
-        throw "Invalid type: " + src[key].type
+        throw new Error("Invalid type: " + src[key].type)
 
   api.defModels = (models) ->
     allspec = {}
