@@ -6,6 +6,11 @@ async = require 'async'
 _ = require 'underscore'
 
 
+noErr = (cb) ->
+  (err, args...) ->
+    should.not.exist err
+    cb(args...) if cb
+
 
 it "should have the right methods", ->
   api = manikin.create()
@@ -115,6 +120,29 @@ it "should allow model definitions in bulk", ->
 
 
 
+it "should recognize valid object ids", ->
+  api = manikin.create()
+  api.isValidId('abc').should.eql false
+
+
+
+it "should recognize invalid object ids", ->
+  api = manikin.create()
+  api.isValidId('509cf9b1788d6803a1000004').should.eql true
+
+
+
+it "should throw exceptions for invalid types", ->
+  api = manikin.create()
+
+  (->
+    api.defModels
+      some_model:
+        fields:
+          name: 'an-invalid-type'
+  ).should.throw('Invalid type: an-invalid-type')
+
+
 
 it "should provide an interface for meta data", ->
   api = manikin.create()
@@ -209,10 +237,8 @@ describe 'Manikin', ->
           name: { type: 'string' }
           stats: { type: 'mixed' }
 
-    api.connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-      api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, (err, survey) ->
-        should.not.exist err
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, noErr (survey) ->
         survey.should.have.keys ['id', 'name', 'stats']
         survey.stats.should.have.keys ['s1', 's2']
         api.close(done)
@@ -230,15 +256,11 @@ describe 'Manikin', ->
           name: { type: 'string' }
           stats: { type: 'mixed' }
 
-    promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-    .post 'warez', { name: 'jakob', stats: 1 }, (err) ->
-      should.not.exist err
-    .post 'warez', { name: 'erik', stats: 2 }, (err) ->
-      should.not.exist err
-    .post 'warez', { name: 'julia', stats: 3 }, (err) ->
-      should.not.exist err
-    .list 'warez', (err, list) ->
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post('warez', { name: 'jakob', stats: 1 }, noErr())
+    .post('warez', { name: 'erik', stats: 2 }, noErr())
+    .post('warez', { name: 'julia', stats: 3 }, noErr())
+    .list 'warez', noErr (list) ->
       names = list.map (x) -> x.name
       names.should.eql ['erik', 'jakob', 'julia']
     .then ->
@@ -257,10 +279,8 @@ describe 'Manikin', ->
           lastName: { type: 'string' }
           age: 'number'
 
-    api.connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-      api.post 'leet', { firstName: 'jakob', lastName: 'mattsson', age: 27 }, (err, survey) ->
-        should.not.exist err
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'leet', { firstName: 'jakob', lastName: 'mattsson', age: 27 }, noErr (survey) ->
         survey.should.have.keys ['id', 'firstName', 'lastName', 'age']
         survey.should.eql { id: survey.id, firstName: 'jakob', lastName: 'mattsson', age: 27 }
         api.close(done)
@@ -296,47 +316,38 @@ describe 'Manikin', ->
 
     saved = {}
 
-    promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-    .post 'accounts', { name: 'n1' }, (err, a1) ->
-      should.not.exist err
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post 'accounts', { name: 'n1' }, noErr (a1) ->
       a1.should.have.keys ['name', 'id']
       saved.a1 = a1
-    .then 'post', -> @ 'accounts', { name: 'n2' }, (err, a2) ->
-      should.not.exist err
+    .then 'post', -> @ 'accounts', { name: 'n2' }, noErr (a2) ->
       a2.should.have.keys ['name', 'id']
       saved.a2 = a2
-    .list 'accounts', (err, accs) ->
-      should.not.exist err
+    .list 'accounts', noErr (accs) ->
       accs.should.eql [saved.a1, saved.a2]
-    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, (err, acc) ->
-      should.not.exist err
+    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, noErr (acc) ->
       acc.should.eql saved.a1
-    .then 'getOne', -> @ 'accounts', { name: 'n2' }, (err, acc) ->
-      should.not.exist err
+    .then 'getOne', -> @ 'accounts', { name: 'n2' }, noErr (acc) ->
       acc.should.eql saved.a2
     .then 'getOne', -> @ 'accounts', { name: 'does-not-exist' }, (err, acc) ->
       err.toString().should.eql 'Error: No match'
       should.not.exist acc
 
-    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, (err, company) ->
-      should.not.exist err
+    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, noErr (company) ->
       company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
       saved.c1 = company
-    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, (err, company) ->
-      should.not.exist err
+    .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, noErr (company) ->
       company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
       saved.c2 = company
-    .then 'post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, (err, company) ->
-      should.not.exist err
+    .then 'post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, noErr (company) ->
       company.should.have.keys ['name', 'company', 'account', 'id']
 
     # testing to get an account without nesting
-    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, (err, acc) ->
+    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, noErr (acc) ->
       _(acc).omit('id').should.eql { name: 'n1' }
 
     # testing to get an account with nesting
-    .then 'getOne', -> @ 'accounts', { nesting: 1, filter: { id: saved.a1.id } }, (err, acc) ->
+    .then 'getOne', -> @ 'accounts', { nesting: 1, filter: { id: saved.a1.id } }, noErr (acc) ->
       _(acc).omit('id').should.eql { name: 'n1' }
 
 
@@ -363,37 +374,24 @@ describe 'Manikin', ->
 
     saved = {}
 
-    promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-    .post 'people', { name: 'q1' }, (err, q1) ->
-      should.not.exist err
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post 'people', { name: 'q1' }, noErr (q1) ->
       saved.q1 = q1
-    .post 'people', { name: 'q2' }, (err, q2) ->
-      should.not.exist err
+    .post 'people', { name: 'q2' }, noErr (q2) ->
       saved.q2 = q2
-    .post 'devices', { name: 'd1' }, (err, d1) ->
-      should.not.exist err
+    .post 'devices', { name: 'd1' }, noErr (d1) ->
       saved.d1 = d1
-    .post 'devices', { name: 'd2' }, (err, d2) ->
-      should.not.exist err
+    .post 'devices', { name: 'd2' }, noErr (d2) ->
       saved.d2 = d2
-    .then 'postMany', -> @ 'people', saved.q1.id, 'boundDevices', saved.d1.id, (err) ->
-      should.not.exist err
-    .then 'postMany', -> @ 'people', saved.q1.id, 'boundDevices', saved.d2.id, (err) ->
-      should.not.exist err
-
-    .then 'getMany', -> @ 'people', saved.q1.id, 'boundDevices', (err, data) ->
-      should.not.exist err
+    .then 'postMany', -> @('people', saved.q1.id, 'boundDevices', saved.d1.id, noErr())
+    .then 'postMany', -> @('people', saved.q1.id, 'boundDevices', saved.d2.id, noErr())
+    .then 'getMany', -> @ 'people', saved.q1.id, 'boundDevices', noErr (data) ->
       data.length.should.eql 2
-    .then 'getMany', -> @ 'people', saved.q2.id, 'boundDevices', (err, data) ->
-      should.not.exist err
+    .then 'getMany', -> @ 'people', saved.q2.id, 'boundDevices', noErr (data) ->
       data.length.should.eql 0
-
-    .then 'getMany', -> @ 'devices', saved.d1.id, 'boundPeople', (err, data) ->
-      should.not.exist err
+    .then 'getMany', -> @ 'devices', saved.d1.id, 'boundPeople', noErr (data) ->
       data.length.should.eql 1
-    .then 'getMany', -> @ 'devices', saved.d2.id, 'boundPeople', (err, data) ->
-      should.not.exist err
+    .then 'getMany', -> @ 'devices', saved.d2.id, 'boundPeople', noErr (data) ->
       data.length.should.eql 1
 
     .then -> api.close(done)
@@ -416,13 +414,11 @@ describe 'Manikin', ->
           name: { type: 'string', default: '' }
           orgnr: { type: 'string', default: '' }
 
-    api.connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-      api.post 'accounts', { name: 'a1' }, (err, account) ->
-        should.not.exist err
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'accounts', { name: 'a1' }, noErr (account) ->
         account.should.have.keys ['name', 'id']
         api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
-          should.exist err # expect something more precise here...
+          should.exist err # expect something more precise...
           api.close(done)
 
 
@@ -448,8 +444,7 @@ describe 'Manikin', ->
       response: null
     ]
 
-    api.connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
       async.forEach indata, (d, callback) ->
         api.post 'pizzas', { name: d.name }, (err, res) ->
           if d.response != null
@@ -490,18 +485,13 @@ describe 'Manikin', ->
         fields:
           race: { type: 'string', default: '' }
 
-    api.connect 'mongodb://localhost/manikin-test', (err) ->
-      should.not.exist err
-      api.post 'accounts', { name: 'a1', bullshit: 123 }, (err, account) ->
-        should.not.exist err
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
         account.should.have.keys ['name', 'id']
-        api.post 'companies2', { name: 'n', orgnr: 'nbr', account: account.id }, (err, company) ->
-          should.not.exist err
+        api.post 'companies2', { name: 'n', orgnr: 'nbr', account: account.id }, noErr (company) ->
           company.should.have.keys ['id', 'name', 'orgnr', 'account']
-          api.post 'contacts', { email: '@', phone: '112', company: company.id }, (err, contact) ->
-            should.not.exist err
+          api.post 'contacts', { email: '@', phone: '112', company: company.id }, noErr (contact) ->
             contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
-            api.post 'pets', { race: 'dog', contact: contact.id }, (err, pet) ->
-              should.not.exist err
+            api.post 'pets', { race: 'dog', contact: contact.id }, noErr (pet) ->
               pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
               api.close(done)
