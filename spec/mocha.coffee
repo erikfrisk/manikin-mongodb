@@ -1,4 +1,4 @@
-manikin = require '../lib/manikin'
+manikin = require('./setup').requireSource('manikin')
 mongojs = require 'mongojs'
 assert = require 'assert'
 should = require 'should'
