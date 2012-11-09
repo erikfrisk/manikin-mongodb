@@ -123,12 +123,12 @@ exports.create = ->
     invalidFields = _.difference(inputFields, validField)
 
     if invalidFields.length > 0
-      callback("Invalid fields: " + invalidFields.join(', '))
+      callback(new Error("Invalid fields: " + invalidFields.join(', ')))
       return
 
     model.findOne filter, propagate callback, (d) ->
       if !d?
-        callback "No such id"
+        callback(new Error("No such id"))
         return
 
       inputFields.forEach (key) ->
@@ -150,9 +150,9 @@ exports.create = ->
           fieldMatch = err.err.match(/\$([a-zA-Z]+)_1/)
           valueMatch = err.err.match(/"([a-zA-Z]+)"/)
           if fieldMatch && valueMatch
-            callback("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}")
+            callback(new Error("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}"))
           else
-            callback("Unique constraint violated")
+            callback(new Error("Unique constraint violated"))
         else
           massaged(callback).apply(this, arguments)
 
@@ -180,7 +180,7 @@ exports.create = ->
       filter = {}
 
     if filter[outer]? && filter[outer].toString() != id.toString()
-      callback 'No such id'
+      callback(new Error('No such id'))
       return
 
     filter = preprocFilter(filter)
@@ -206,7 +206,7 @@ exports.create = ->
     mm = getManyToMany(primaryModel).filter((x) -> x.name == propertyName)[0]
 
     if mm == null
-      callback('Invalid manyToMany-property')
+      callback(new Error('Invalid manyToMany-property'))
       return
 
     secondaryModel = mm.ref
