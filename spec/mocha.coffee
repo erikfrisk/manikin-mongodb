@@ -11,7 +11,6 @@ it "should have the right methods", ->
   api = manikin.create()
   api.should.have.keys [
     # definition
-    'defModel'
     'defModels'
 
     # meta-methods
@@ -32,7 +31,6 @@ it "should have the right methods", ->
     'getMany'
     'delMany'
     'postMany'
-    'getManyBackwards'
   ]
 
 
@@ -41,7 +39,7 @@ promise = (api) ->
   obj = {}
   queue = []
   running = false
-  methods = ['connect', 'close', 'post', 'list', 'getOne', 'delOne', 'putOne', 'getMany', 'delMany', 'postMany', 'getBackBackwards']
+  methods = ['connect', 'close', 'post', 'list', 'getOne', 'delOne', 'putOne', 'getMany', 'delMany', 'postMany']
 
   invoke = (method, args, cb) ->
     method args..., ->
@@ -87,14 +85,15 @@ promise = (api) ->
 it "should allow model definitions", ->
   api = manikin.create()
 
-  api.defModel 'surveys',
-    owners: {}
-    fields: {}
-
-  api.defModel 'questions',
-    owners:
-      survey: 'surveys'
-    fields: {}
+  api.defModels
+    surveys:
+      owners: {}
+      fields: {}
+  
+    questions:
+      owners:
+        survey: 'surveys'
+      fields: {}
 
   api.getModels().should.eql ['surveys', 'questions']
 
@@ -120,22 +119,23 @@ it "should allow model definitions in bulk", ->
 it "should provide an interface for meta data", ->
   api = manikin.create()
 
-  api.defModel 'accounts',
-    owners: {}
-    fields:
-      name: { type: 'string', default: '' }
+  api.defModels
+    accounts:
+      owners: {}
+      fields:
+        name: { type: 'string', default: '' }
 
-  api.defModel 'companies',
-    owners:
-      account: 'accounts'
-    fields:
-      name: { type: 'string', default: '' }
-      orgnr: { type: 'string', default: '' }
+    companies:
+      owners:
+        account: 'accounts'
+      fields:
+        name: { type: 'string', default: '' }
+        orgnr: { type: 'string', default: '' }
 
-  api.defModel 'customers'
-    fields:
-      name: { type: 'string' }
-      at: { type: 'hasMany', model: 'companies' }
+    customers:
+      fields:
+        name: { type: 'string' }
+        at: { type: 'hasMany', model: 'companies' }
 
 
   meta = [
@@ -164,7 +164,7 @@ it "should provide an interface for meta data", ->
     owners: [{ plur: 'accounts', sing: 'account' }]
     owns: []
     fields: meta
-    manyToMany: []
+    manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
 
   api.getMeta('accounts').should.eql
     owners: []
@@ -186,11 +186,10 @@ it "should provide an interface for meta data", ->
     owners: []
     owns: []
     fields: [
-      { name: 'at',   readonly: false, required: false, type: 'unknown' }
       { name: 'id',   readonly: true,  required: false, type: 'string'  }
       { name: 'name', readonly: false, required: false, type: 'string'  }
     ]
-    manyToMany: [{ ref: 'companies', name: 'at' }]
+    manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]
 
 
 
@@ -203,11 +202,12 @@ describe 'Manikin', ->
   it "should allow mixed properties in models definitions", (done) ->
     api = manikin.create()
 
-    api.defModel 'stuffs',
-      owners: {}
-      fields:
-        name: { type: 'string' }
-        stats: { type: 'mixed' }
+    api.defModels
+      stuffs:
+        owners: {}
+        fields:
+          name: { type: 'string' }
+          stats: { type: 'mixed' }
 
     api.connect 'mongodb://localhost/manikin-test', (err) ->
       should.not.exist err
@@ -222,12 +222,13 @@ describe 'Manikin', ->
   it "should allow default sorting orders", (done) ->
     api = manikin.create()
 
-    api.defModel 'warez',
-      owners: {}
-      defaultSort: 'name'
-      fields:
-        name: { type: 'string' }
-        stats: { type: 'mixed' }
+    api.defModels
+      warez:
+        owners: {}
+        defaultSort: 'name'
+        fields:
+          name: { type: 'string' }
+          stats: { type: 'mixed' }
 
     promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
       should.not.exist err
@@ -248,12 +249,13 @@ describe 'Manikin', ->
   it "should allow simplified field declarations (specifying type only)", (done) ->
     api = manikin.create()
 
-    api.defModel 'leet',
-      owners: {}
-      fields:
-        firstName: 'string'
-        lastName: { type: 'string' }
-        age: 'number'
+    api.defModels
+      leet:
+        owners: {}
+        fields:
+          firstName: 'string'
+          lastName: { type: 'string' }
+          age: 'number'
 
     api.connect 'mongodb://localhost/manikin-test', (err) ->
       should.not.exist err
@@ -268,28 +270,29 @@ describe 'Manikin', ->
   it "should provide some typical http-operations", (done) ->
     api = manikin.create()
 
-    api.defModel 'accounts',
-      owners: {}
-      fields:
-        name: { type: 'string', default: '' }
+    api.defModels
+      accounts:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
 
-    api.defModel 'companies',
-      owners:
-        account: 'accounts'
-      fields:
-        name: { type: 'string', default: '' }
-        orgnr: { type: 'string', default: '' }
+      companies:
+        owners:
+          account: 'accounts'
+        fields:
+          name: { type: 'string', default: '' }
+          orgnr: { type: 'string', default: '' }
 
-    api.defModel 'employees',
-      owners:
-        company: 'companies'
-      fields:
-        name: { type: 'string', default: '' }
+      employees:
+        owners:
+          company: 'companies'
+        fields:
+          name: { type: 'string', default: '' }
 
-    api.defModel 'customers'
-      fields:
-        name: { type: 'string' }
-        at: { type: 'hasMany', model: 'companies' }
+      customers:
+        fields:
+          name: { type: 'string' }
+          at: { type: 'hasMany', model: 'companies' }
 
     saved = {}
 
@@ -318,11 +321,11 @@ describe 'Manikin', ->
 
     .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, (err, company) ->
       should.not.exist err
-      company.should.have.keys ['name', 'orgnr', 'account', 'id']
+      company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
       saved.c1 = company
     .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, (err, company) ->
       should.not.exist err
-      company.should.have.keys ['name', 'orgnr', 'account', 'id']
+      company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
       saved.c2 = company
     .then 'post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, (err, company) ->
       should.not.exist err
@@ -343,22 +346,75 @@ describe 'Manikin', ->
 
 
 
+  it "should be possible to query many-to-many-relationships", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      people:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
+          boundDevices: { type: 'hasMany', model: 'devices', inverseName: 'boundPeople' }
+
+      devices:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
+
+    saved = {}
+
+    promise(api).connect 'mongodb://localhost/manikin-test', (err) ->
+      should.not.exist err
+    .post 'people', { name: 'q1' }, (err, q1) ->
+      should.not.exist err
+      saved.q1 = q1
+    .post 'people', { name: 'q2' }, (err, q2) ->
+      should.not.exist err
+      saved.q2 = q2
+    .post 'devices', { name: 'd1' }, (err, d1) ->
+      should.not.exist err
+      saved.d1 = d1
+    .post 'devices', { name: 'd2' }, (err, d2) ->
+      should.not.exist err
+      saved.d2 = d2
+    .then 'postMany', -> @ 'people', saved.q1.id, 'boundDevices', saved.d1.id, (err) ->
+      should.not.exist err
+    .then 'postMany', -> @ 'people', saved.q1.id, 'boundDevices', saved.d2.id, (err) ->
+      should.not.exist err
+
+    .then 'getMany', -> @ 'people', saved.q1.id, 'boundDevices', (err, data) ->
+      should.not.exist err
+      data.length.should.eql 2
+    .then 'getMany', -> @ 'people', saved.q2.id, 'boundDevices', (err, data) ->
+      should.not.exist err
+      data.length.should.eql 0
+
+    .then 'getMany', -> @ 'devices', saved.d1.id, 'boundPeople', (err, data) ->
+      should.not.exist err
+      data.length.should.eql 1
+    .then 'getMany', -> @ 'devices', saved.d2.id, 'boundPeople', (err, data) ->
+      should.not.exist err
+      data.length.should.eql 1
+
+    .then -> api.close(done)
+
 
 
   it "should not be ok to post without specifiying the owner", (done) ->
     api = manikin.create()
 
-    api.defModel 'accounts',
-      owners: {}
-      fields:
-        name: { type: 'string', default: '' }
+    api.defModels
+      accounts:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
 
-    api.defModel 'companies',
-      owners:
-        account: 'accounts'
-      fields:
-        name: { type: 'string', default: '' }
-        orgnr: { type: 'string', default: '' }
+      companies:
+        owners:
+          account: 'accounts'
+        fields:
+          name: { type: 'string', default: '' }
+          orgnr: { type: 'string', default: '' }
 
     api.connect 'mongodb://localhost/manikin-test', (err) ->
       should.not.exist err
@@ -374,14 +430,15 @@ describe 'Manikin', ->
   it "should allow custom validators", (done) ->
     api = manikin.create()
 
-    api.defModel 'pizzas',
-      owners: {}
-      fields:
-        name:
-          type: 'string'
-          validate: (apiRef, value, callback) ->
-            api.should.eql apiRef
-            callback(value.length % 2 == 0)
+    api.defModels
+      pizzas:
+        owners: {}
+        fields:
+          name:
+            type: 'string'
+            validate: (apiRef, value, callback) ->
+              api.should.eql apiRef
+              callback(value.length % 2 == 0)
 
     indata = [
       name: 'jakob'
@@ -407,37 +464,38 @@ describe 'Manikin', ->
   it "should introduce redundant references to all ancestors", (done) ->
     api = manikin.create()
 
-    api.defModel 'accounts',
-      owners: {}
-      fields:
-        name: { type: 'string', default: '' }
+    api.defModels
+      accounts:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
 
-    api.defModel 'companies',
-      owners:
-        account: 'accounts'
-      fields:
-        name: { type: 'string', default: '' }
-        orgnr: { type: 'string', default: '' }
+      companies2:
+        owners:
+          account: 'accounts'
+        fields:
+          name: { type: 'string', default: '' }
+          orgnr: { type: 'string', default: '' }
 
-    api.defModel 'contacts',
-      owners:
-        company: 'companies'
-      fields:
-        email: { type: 'string', default: '' }
-        phone: { type: 'string', default: '' }
+      contacts:
+        owners:
+          company: 'companies2'
+        fields:
+          email: { type: 'string', default: '' }
+          phone: { type: 'string', default: '' }
 
-    api.defModel 'pets',
-      owners:
-        contact: 'contacts'
-      fields:
-        race: { type: 'string', default: '' }
+      pets:
+        owners:
+          contact: 'contacts'
+        fields:
+          race: { type: 'string', default: '' }
 
     api.connect 'mongodb://localhost/manikin-test', (err) ->
       should.not.exist err
       api.post 'accounts', { name: 'a1', bullshit: 123 }, (err, account) ->
         should.not.exist err
         account.should.have.keys ['name', 'id']
-        api.post 'companies', { name: 'n', orgnr: 'nbr', account: account.id }, (err, company) ->
+        api.post 'companies2', { name: 'n', orgnr: 'nbr', account: account.id }, (err, company) ->
           should.not.exist err
           company.should.have.keys ['id', 'name', 'orgnr', 'account']
           api.post 'contacts', { email: '@', phone: '112', company: company.id }, (err, contact) ->

@@ -213,45 +213,58 @@ exports.create = ->
       models[primaryModel].update conditions, update, options, (err, numAffected) ->
         callback(err)
 
-  api.postMany = (primaryModel, primaryId, propertyName, secondaryModel, secondaryId, callback) ->
+  api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
+
+    mm = getManyToMany(primaryModel).filter((x) -> x.name == propertyName)[0]
+
+    if mm == null
+      callback('Invalid manyToMany-property')
+      return
+
+    secondaryModel = mm.ref
+    inverseName = mm.inverseName
+
     models[primaryModel].findById primaryId, propagate callback, (data) ->
-      models[secondaryModel].findById secondaryId, propagate callback, () ->
+      models[secondaryModel].findById secondaryId, propagate callback, (data2) ->
 
         if -1 == data[propertyName].indexOf secondaryId
           data[propertyName].push secondaryId
 
-        data.save (err) ->
-          callback(err, {})
+        if -1 == data2[inverseName].indexOf primaryId
+          data2[inverseName].push primaryId
+
+        # how to handle if one of these manages to save, but not the other?
+        # the database will end up in an invalid state! is it possible to do some kind of transaction?
+        data.save propagate callback, ->
+          data2.save (err) ->
+            callback(err, {})
 
   api.getMany = (primaryModel, primaryId, propertyName, callback) ->
     models[primaryModel]
     .findOne({ _id: primaryId })
     .populate(propertyName)
-    .run (err, story) ->
+    .exec (err, story) ->
       callback err, massage(story[propertyName])
 
-  api.getManyBackwards = (model, id, propertyName, callback) ->
-    db[model].find _.makeObject(propertyName, new db.bson.ObjectID(id.toString())), (err, result) ->
-      callback(err, massage(result))
 
 
 
 
 
 
-  specTransform = (tgt, src, keys) ->
+  specTransform = (allspec, modelName, tgt, src, keys) ->
     keys.forEach (key) ->
       if typeof src[key] == 'string'
         obj = {}
         obj[key] = { type: src[key] }
-        specTransform(tgt, obj, [key])
+        specTransform(allspec, modelName, tgt, obj, [key])
       else if !src[key].type?
         throw "must assign a type: " + JSON.stringify(keys)
       else if src[key].type == 'mixed'
         tgt[key] = { type: mongoose.Schema.Types.Mixed }
       else if src[key].type == 'nested'
         tgt[key] = {}
-        specTransform(tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
+        specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
       else if src[key].type == 'string'
         tgt[key] = { type: String, required: !!src[key].required }
         tgt[key].default = src[key].default if src[key].default?
@@ -280,20 +293,29 @@ exports.create = ->
       else if src[key].type == 'hasOne'
         tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation }
       else if src[key].type == 'hasMany'
-        tgt[key] = [{ type: ObjectId, ref: src[key].model }]
+        tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName || key }]
+        allspec[src[key].model][src[key].inverseName || key] = [{ type: ObjectId, ref: modelName, inverseName: key }]
       else
         throw "Invalid type: " + src[key].type
 
   api.defModels = (models) ->
+    allspec = {}
     Object.keys(models).forEach (modelName) ->
-      api.defModel modelName, models[modelName]
+      allspec[modelName] = {}
 
-  api.defModel = (name, conf) ->
+    rest = {}
 
-    spec = {}
-    owners = conf.owners || {}
-    inspec = conf.fields || {}
-    specTransform(spec, inspec, Object.keys(inspec))
+    Object.keys(models).forEach (modelName) ->
+      spec = allspec[modelName]
+      owners = models[modelName].owners || {}
+      inspec = models[modelName].fields || {}
+      specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
+      rest[modelName] = { owners: owners, spec: spec }
+
+    Object.keys(models).forEach (modelName) ->
+      defModel modelName, models[modelName], rest[modelName].spec, rest[modelName].owners
+
+  defModel = (name, conf, spec, owners) ->
 
     # set owners
     Object.keys(owners).forEach (ownerName) ->
@@ -341,7 +363,7 @@ exports.create = ->
       return 'boolean' if x == Boolean
       return 'date' if x == Date
 
-    metaFields = Object.keys(paths).map (key) ->
+    metaFields = Object.keys(paths).filter((key) -> !Array.isArray(paths[key].options.type)).map (key) ->
       name: (if key == '_id' then 'id' else key)
       readonly: key == '_id' || !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
       required: !!paths[key].options.required
@@ -365,6 +387,7 @@ exports.create = ->
   getManyToMany = (modelName) ->
     paths = models[modelName].schema.paths
     manyToMany = Object.keys(paths).filter((x) -> Array.isArray paths[x].options.type).map (x) ->
+      inverseName: paths[x].options.type[0].inverseName
       ref: paths[x].options.type[0].ref
       name: x
     manyToMany
