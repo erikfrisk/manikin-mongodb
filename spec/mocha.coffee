@@ -427,6 +427,37 @@ describe 'Manikin', ->
 
 
 
+  it "should delete many-to-many-relations when objects are deleted", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      petsY:
+        fields:
+          name: 'string'
+
+      foodsY:
+        fields:
+          name: 'string'
+          eatenBy: { type: 'hasMany', model: 'petsY', inverseName: 'eats' }
+
+    saved = {}
+
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .then 'post', -> @('petsY', { name: 'pet1' }, noErr (res) -> saved.pet1 = res)
+    .then 'post', -> @('foodsY', { name: 'food1' }, noErr (res) -> saved.food1 = res)
+    .then 'postMany', -> @('foodsY', saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
+    .then 'getMany', -> @('petsY', saved.pet1.id, 'eats', noErr((data) -> data.length.should.eql 1))
+    .then 'delOne', -> @('petsY', { id: saved.pet1.id }, noErr())
+    .then 'list', -> @('petsY', { }, noErr((data) -> data.length.should.eql 0))
+    .then 'list', -> @('foodsY', { }, noErr (data) -> data.should.eql [
+      id: saved.food1.id
+      name: 'food1'
+      eatenBy: []
+    ])
+    .then -> api.close(done)
+
+
+
   it "should be possible to query many-to-many-relationships", (done) ->
     api = manikin.create()
 
