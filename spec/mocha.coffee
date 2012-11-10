@@ -469,6 +469,52 @@ describe 'Manikin', ->
 
 
 
+
+  it "should delete meny-to-many-relations even when owners of the related objects are deleted", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      peopleX:
+        fields:
+          name: 'string'
+
+      petsX:
+        owners: { person: 'peopleX' }
+        fields:
+          name: 'string'
+
+      foodsX:
+        owners: {}
+        fields:
+          name: 'string'
+          eatenBy: { type: 'hasMany', model: 'petsX', inverseName: 'eats' }
+
+    saved = {}
+
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post 'peopleX', { name: 'p1' }, noErr (res) ->
+      saved.person = res
+    .then 'post', -> @('petsX', { person: saved.person.id, name: 'pet1' }, noErr (res) -> saved.pet1 = res)
+    .then 'post', -> @('foodsX', { name: 'food1' }, noErr (res) -> saved.food1 = res)
+    .then 'postMany', -> @('foodsX',  saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
+    .then 'getMany',  -> @('petsX', saved.pet1.id, 'eats', noErr((data) -> data.length.should.eql 1))
+    .then 'delOne',  -> @('peopleX', { id: saved.person.id }, noErr())
+    .then 'list',  -> @('peopleX', { }, noErr((data) -> data.length.should.eql 0))
+    .then 'list',  -> @('petsX', { }, noErr((data) -> data.length.should.eql 0))
+    .then 'list',  -> @('foodsX', { }, noErr (data) -> data.should.eql [
+      id: saved.food1.id
+      name: 'food1'
+      eatenBy: []
+    ])
+    .then -> api.close(done)
+
+
+
+
+
+
+
+
   it "should not be ok to post without specifiying the owner", (done) ->
     api = manikin.create()
 
