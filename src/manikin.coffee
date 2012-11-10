@@ -222,13 +222,30 @@ exports.create = ->
       return
 
     secondaryModel = mm.ref
+    inverseName = mm.inverseName
 
-    models[primaryModel].findById primaryId, propagate callback, (data) ->
-      conditions = { _id: primaryId }
-      update = { $pull: _.object([[propertyName, secondaryId]]) }
-      options = { }
-      models[primaryModel].update conditions, update, options, (err, numAffected) ->
-        callback(err)
+    async.forEach [
+      model: primaryModel
+      id: primaryId
+      property: propertyName
+      secondaryId: secondaryId
+    ,
+      model: secondaryModel
+      id: secondaryId
+      property: inverseName
+      secondaryId: primaryId
+    ], (item, callback) ->
+
+      models[item.model].findById item.id, propagate callback, (data) ->
+        conditions = { _id: item.id }
+        update = { $pull: _.object([[item.property, item.secondaryId]]) }
+        options = { }
+        models[item.model].update conditions, update, options, (err, numAffected) ->
+          callback(err)
+
+    , callback
+
+
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
