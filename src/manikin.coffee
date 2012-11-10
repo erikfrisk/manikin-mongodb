@@ -83,7 +83,7 @@ exports.create = ->
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->
-    filter = preprocFilter(config.filter)
+    filter = preprocFilter(config.filter || {})
 
     models[model].findOne filter, (err, data) ->
       if err
