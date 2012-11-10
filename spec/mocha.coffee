@@ -458,16 +458,13 @@ describe 'Manikin', ->
       saved.d1 = d1
     .post 'devices', { name: 'd2' }, noErr (d2) ->
       saved.d2 = d2
-    .then 'postMany', -> @('people', saved.q1.id, 'boundDevices', saved.d1.id, noErr())
-    .then 'postMany', -> @('people', saved.q1.id, 'boundDevices', saved.d2.id, noErr())
-    .then 'getMany', -> @ 'people', saved.q1.id, 'boundDevices', noErr (data) ->
-      data.length.should.eql 2
-    .then 'getMany', -> @ 'people', saved.q2.id, 'boundDevices', noErr (data) ->
-      data.length.should.eql 0
-    .then 'getMany', -> @ 'devices', saved.d1.id, 'boundPeople', noErr (data) ->
-      data.length.should.eql 1
-    .then 'getMany', -> @ 'devices', saved.d2.id, 'boundPeople', noErr (data) ->
-      data.length.should.eql 1
+    .then 'postMany', -> @('people',  saved.q1.id, 'boundDevices', saved.d1.id, noErr())
+    .then 'postMany', -> @('people',  saved.q1.id, 'boundDevices', saved.d2.id, noErr())
+    .then 'getMany',  -> @('people',  saved.q1.id, 'boundDevices', noErr((data) -> data.length.should.eql 2))
+    .then 'getMany',  -> @('people',  saved.q2.id, 'boundDevices', noErr((data) -> data.length.should.eql 0))
+    .then 'getMany',  -> @('devices', saved.d1.id, 'boundPeople',  noErr((data) -> data.length.should.eql 1))
+    .then 'getMany',  -> @('devices', saved.d2.id, 'boundPeople',  noErr((data) -> data.length.should.eql 1))
+    .then 'delMany',  -> @('people',  saved.q1.id, 'boundDevices', saved.d1.id, noErr())
 
     .then -> api.close(done)
 

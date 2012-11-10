@@ -213,7 +213,16 @@ exports.create = ->
 
   # The many-to-many methods
   # ========================
-  api.delMany = (primaryModel, primaryId, propertyName, secondaryModel, secondaryId, callback) ->
+  api.delMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
+
+    mm = getManyToMany(primaryModel).filter((x) -> x.name == propertyName)[0]
+
+    if mm == null
+      callback(new Error('Invalid manyToMany-property'))
+      return
+
+    secondaryModel = mm.ref
+
     models[primaryModel].findById primaryId, propagate callback, (data) ->
       conditions = { _id: primaryId }
       update = { $pull: _.makeObject(propertyName, secondaryId) }
