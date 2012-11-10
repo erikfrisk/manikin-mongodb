@@ -15,14 +15,13 @@
     "prestart": "coffee -c -o lib src"
   },
   "dependencies": {
-    "coffee-script": "1.4.0",
     "mongoose": "3.3.1",
-    "underscore.plus": "0.2.2",
     "mongojs": "0.4.5",
     "underscore": "1.4.2",
     "async": "0.1.22"
   },
   "devDependencies": {
+    "coffee-script": "1.4.0",
     "should": "1.1.0"
   }
 }

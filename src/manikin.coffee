@@ -3,7 +3,6 @@ _ = require 'underscore'
 mongoose = require 'mongoose'
 mongojs = require 'mongojs'
 ObjectId = mongoose.Schema.ObjectId
-_.mixin require 'underscore.plus'
 
 exports.create = ->
 
