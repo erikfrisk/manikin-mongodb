@@ -113,14 +113,27 @@ exports.create = ->
         d.remove (err) ->
           callback err, if !err then massage(d)
 
+
+  getKeys = (data, target = [], prefix = '') ->
+    valids = ['Array', 'String', 'Boolean', 'Date', 'Number', 'Null']
+
+    Object.keys(data).forEach (key) ->
+      if valids.some((x) -> _(data[key])['is' + x]())
+        target.push(prefix + key)
+      else
+        getKeys(data[key], target, prefix + key + '.')
+
+    target
+
   api.putOne = (modelName, data, filter, callback) ->
     filter = preprocFilter(filter)
 
     model = models[modelName]
+    inputFieldsValid = getKeys data
     inputFields = Object.keys data
     validField = Object.keys(model.schema.paths)
 
-    invalidFields = _.difference(inputFields, validField)
+    invalidFields = _.difference(inputFieldsValid, validField)
 
     if invalidFields.length > 0
       callback(new Error("Invalid fields: " + invalidFields.join(', ')))

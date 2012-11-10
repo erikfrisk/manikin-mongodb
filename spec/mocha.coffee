@@ -227,6 +227,58 @@ describe 'Manikin', ->
     mongojs.connect('mongodb://localhost/manikin-test').dropDatabase done
 
 
+  it "should allow a basic set of primitive data types to be stored, updated and retrieved", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      stuffz:
+        fields:
+          v1: 'string'
+          v2: 'number'
+          v3: 'date'
+          v4: 'boolean'
+          v5:
+            type: 'nested'
+            v6: 'string'
+            v7: 'number'
+
+    saved = {}
+
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post('stuffz', { v1: 'jakob', v2: 12.5, v3: '2012-10-15', v4: true, v5: { v6: 'nest', v7: 7 } }, noErr())
+    .list 'stuffz', noErr (list) ->
+      saved.id = list[0].id
+      list.map((x) -> _(x).omit('id')).should.eql [
+        v1: 'jakob'
+        v2: 12.5
+        v3: '2012-10-15T00:00:00.000Z'
+        v4: true
+        v5:
+          v6: 'nest'
+          v7: 7
+      ]
+    .then 'putOne', -> @ 'stuffz', { v1: 'jakob2', v3: '2012-10-15T13:37:00', v4: false, v5: { v6: 'nest2', v7: 14 } }, { id: saved.id }, noErr (r) ->
+      _(r).omit('id').should.eql
+        v1: 'jakob2'
+        v2: 12.5
+        v3: '2012-10-15T13:37:00.000Z'
+        v4: false
+        v5:
+          v6: 'nest2'
+          v7: 14
+    .then 'getOne', -> @ 'stuffz', { filter: { id: saved.id } }, noErr (r) ->
+      _(r).omit('id').should.eql
+        v1: 'jakob2'
+        v2: 12.5
+        v3: '2012-10-15T13:37:00.000Z'
+        v4: false
+        v5:
+          v6: 'nest2'
+          v7: 14
+    .then ->
+      api.close(done)
+
+
   it "should allow mixed properties in models definitions", (done) ->
     api = manikin.create()
 
