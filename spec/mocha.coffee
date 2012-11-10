@@ -501,7 +501,7 @@ describe 'Manikin', ->
 
 
 
-  it "should delete meny-to-many-relations even when owners of the related objects are deleted", (done) ->
+  it "should delete many-to-many-relations even when owners of the related objects are deleted", (done) ->
     api = manikin.create()
 
     api.defModels
