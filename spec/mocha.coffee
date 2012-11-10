@@ -279,6 +279,29 @@ describe 'Manikin', ->
       api.close(done)
 
 
+
+  it "should detect when an object id does not exist", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      table:
+        fields:
+          v1: 'string'
+
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .getOne 'table', { filter: { id: '123' } }, (err, data) ->
+      err.should.eql new Error()
+      err.toString().should.eql 'Error: No such id'
+      should.not.exist data
+    .delOne 'table', { id: '123' }, (err, data) ->
+      err.should.eql new Error()
+      err.toString().should.eql 'Error: No such id'
+      should.not.exist data
+    .then ->
+      api.close(done)
+
+
+
   it "should allow mixed properties in models definitions", (done) ->
     api = manikin.create()
 

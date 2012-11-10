@@ -100,14 +100,21 @@ exports.create = ->
         else
           callback(err)
         return
-      return callback(new Error('No match')) if !data?
-      callback null, massage(data)
+      else if !data?
+        callback(new Error('No match'))
+      else
+        callback null, massage(data)
 
   api.delOne = (model, filter, callback) ->
     filter = preprocFilter(filter)
 
-    models[model].findOne filter, propagate callback, (d) ->
-      if !d?
+    models[model].findOne filter, (err, d) ->
+      if err
+        if err.toString() == 'Error: Invalid ObjectId'
+          callback(new Error('No such id'))
+        else
+          callback(err)
+      else if !d?
         callback(new Error('No such id'))
       else
         d.remove (err) ->
