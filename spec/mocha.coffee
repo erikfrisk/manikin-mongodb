@@ -561,13 +561,19 @@ describe 'Manikin', ->
         fields:
           race: { type: 'string', default: '' }
 
-    api.connect 'mongodb://localhost/manikin-test', noErr ->
-      api.post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
-        account.should.have.keys ['name', 'id']
-        api.post 'companies2', { name: 'n', orgnr: 'nbr', account: account.id }, noErr (company) ->
-          company.should.have.keys ['id', 'name', 'orgnr', 'account']
-          api.post 'contacts', { email: '@', phone: '112', company: company.id }, noErr (contact) ->
-            contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
-            api.post 'pets', { race: 'dog', contact: contact.id }, noErr (pet) ->
-              pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
-              api.close(done)
+    saved = {}
+
+    promise(api).connect('mongodb://localhost/manikin-test', noErr())
+    .post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
+      account.should.have.keys ['name', 'id']
+      saved.account = account
+    .then 'post', -> @ 'companies2', { name: 'n', orgnr: 'nbr', account: saved.account.id }, noErr (company) ->
+      saved.company = company
+      company.should.have.keys ['id', 'name', 'orgnr', 'account']
+    .then 'post', -> @ 'contacts', { email: '@', phone: '112', company: saved.company.id }, noErr (contact) ->
+      saved.contact = contact
+      contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
+    .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact.id }, noErr (pet) ->
+      pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
+    .then -> api.close(done)
+
