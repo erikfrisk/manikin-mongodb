@@ -76,10 +76,6 @@ exports.create = ->
   # The five base methods
   # =====================
   api.list = (model, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
     filter = preprocFilter(filter)
 
     rr = models[model].find(filter)
@@ -88,9 +84,6 @@ exports.create = ->
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->
-    filter = preprocFilter(filter)
-    config = { filter: config } if !config.filter? # hack for backwards compatibility
-
     filter = preprocFilter(config.filter)
 
     models[model].findOne filter, (err, data) ->

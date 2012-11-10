@@ -246,7 +246,7 @@ describe 'Manikin', ->
 
     promise(api).connect('mongodb://localhost/manikin-test', noErr())
     .post('stuffz', { v1: 'jakob', v2: 12.5, v3: '2012-10-15', v4: true, v5: { v6: 'nest', v7: 7 } }, noErr())
-    .list 'stuffz', noErr (list) ->
+    .list 'stuffz', {}, noErr (list) ->
       saved.id = list[0].id
       list.map((x) -> _(x).omit('id')).should.eql [
         v1: 'jakob'
@@ -335,7 +335,7 @@ describe 'Manikin', ->
     .post('warez', { name: 'jakob', stats: 1 }, noErr())
     .post('warez', { name: 'erik', stats: 2 }, noErr())
     .post('warez', { name: 'julia', stats: 3 }, noErr())
-    .list 'warez', noErr (list) ->
+    .list 'warez', {}, noErr (list) ->
       names = list.map (x) -> x.name
       names.should.eql ['erik', 'jakob', 'julia']
     .then ->
@@ -398,13 +398,13 @@ describe 'Manikin', ->
     .then 'post', -> @ 'accounts', { name: 'n2' }, noErr (a2) ->
       a2.should.have.keys ['name', 'id']
       saved.a2 = a2
-    .list 'accounts', noErr (accs) ->
+    .list 'accounts', {}, noErr (accs) ->
       accs.should.eql [saved.a1, saved.a2]
-    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, noErr (acc) ->
+    .then 'getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
       acc.should.eql saved.a1
-    .then 'getOne', -> @ 'accounts', { name: 'n2' }, noErr (acc) ->
+    .then 'getOne', -> @ 'accounts', { filter: { name: 'n2' } }, noErr (acc) ->
       acc.should.eql saved.a2
-    .then 'getOne', -> @ 'accounts', { name: 'does-not-exist' }, (err, acc) ->
+    .then 'getOne', -> @ 'accounts', { filter: { name: 'does-not-exist' } }, (err, acc) ->
       err.toString().should.eql 'Error: No match'
       should.not.exist acc
 
@@ -418,7 +418,7 @@ describe 'Manikin', ->
       company.should.have.keys ['name', 'company', 'account', 'id']
 
     # testing to get an account without nesting
-    .then 'getOne', -> @ 'accounts', { id: saved.a1.id }, noErr (acc) ->
+    .then 'getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
       _(acc).omit('id').should.eql { name: 'n1' }
 
     # testing to get an account with nesting
