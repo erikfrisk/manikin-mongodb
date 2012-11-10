@@ -87,36 +87,31 @@ promise = (api) ->
 
 
 
-it "should allow model definitions", ->
-  api = manikin.create()
-
-  api.defModels
-    surveys:
-      owners: {}
-      fields: {}
-  
-    questions:
-      owners:
-        survey: 'surveys'
-      fields: {}
-
-  api.getModels().should.eql ['surveys', 'questions']
-
-
-
 it "should allow model definitions in bulk", ->
   api = manikin.create()
 
   api.defModels
     surveys:
-      owners: {}
-      fields: {}
+      fields:
+        birth: 'date'
+        count: { type: 'number', unique: true }
     questions:
       owners:
         survey: 'surveys'
-      fields: {}
+      fields:
+        name: 'string'
 
-  api.getModels().should.eql ['surveys', 'questions']
+  api.getModels().should.eql
+    surveys:
+      owners: {}
+      fields:
+        birth: { type: 'date', required: false, index: false, unique: false }
+        count: { type: 'number', required: false, index: false, unique: true }
+    questions:
+      owners:
+        survey: 'surveys'
+      fields:
+        name: { type: 'string', required: false, index: false, unique: false }
 
 
 

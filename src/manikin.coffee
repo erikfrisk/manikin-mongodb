@@ -9,6 +9,7 @@ exports.create = ->
   db = null
   api = {}
   models = {}
+  specmodels = {}
   meta = {}
 
   propagate = (callback, f) ->
@@ -62,7 +63,7 @@ exports.create = ->
   # ================
   api.connect = (databaseUrl, callback) ->
     mongoose.connect databaseUrl
-    db = mongojs.connect databaseUrl, api.getModels()
+    db = mongojs.connect databaseUrl, Object.keys(api.getModels())
     db[Object.keys(models)[0]].find (err) ->
       callback(err)
 
@@ -278,70 +279,98 @@ exports.create = ->
 
 
 
-  specTransform = (allspec, modelName, tgt, src, keys) ->
+  desugarModel = (modelName, tgt, src, keys) ->
     keys.forEach (key) ->
       if typeof src[key] == 'string'
         obj = {}
         obj[key] = { type: src[key] }
-        specTransform(allspec, modelName, tgt, obj, [key])
+        desugarModel(modelName, tgt, obj, [key])
       else if !src[key].type?
         throw new Error("must assign a type: " + JSON.stringify(keys))
       else if src[key].type == 'mixed'
+        tgt[key] = { type: 'mixed' }
+      else if src[key].type == 'nested'
+        tgt[key] = { type: 'nested' }
+        desugarModel(modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
+      else if _(['string', 'number', 'date', 'boolean']).contains(src[key].type)
+        tgt[key] =
+          type: src[key].type
+          required: !!src[key].required
+          index: !!src[key].index
+          unique: !!src[key].unique
+        tgt[key].default = src[key].default if src[key].default?
+        tgt[key].validate = src[key].validate if src[key].validate?
+      else if src[key].type == 'hasOne'
+        tgt[key] = { ref: src[key].model, validation: src[key].validation }
+      else if src[key].type == 'hasMany'
+        tgt[key] = src[key]
+        tgt[key].inverseName = src[key].inverseName || key
+      else
+        throw new Error("Invalid type: " + src[key].type)
+
+
+  specTransform = (allspec, modelName, tgt, src, keys) ->
+    keys.forEach (key) ->
+      if src[key].type == 'mixed'
         tgt[key] = { type: mongoose.Schema.Types.Mixed }
       else if src[key].type == 'nested'
         tgt[key] = {}
         specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
       else if src[key].type == 'string'
-        tgt[key] = { type: String, required: !!src[key].required }
-        tgt[key].default = src[key].default if src[key].default?
-        tgt[key].index = src[key].index if src[key].index?
-        tgt[key].unique = src[key].unique if src[key].unique?
+        tgt[key] = _.extend({}, src[key], { type: String })
 
         if src[key].validate?
           tgt[key].validate = (value, callback) ->
             src[key].validate(api, value, callback)
 
       else if src[key].type == 'number'
-        tgt[key] = { type: Number, required: !!src[key].required }
-        tgt[key].default = src[key].default if src[key].default?
-        tgt[key].index = src[key].index if src[key].index?
-        tgt[key].unique = src[key].unique if src[key].unique?
+        tgt[key] = _.extend({}, src[key], { type: Number })
       else if src[key].type == 'date'
-        tgt[key] = { type: Date, required: !!src[key].required }
-        tgt[key].default = src[key].default if src[key].default?
-        tgt[key].index = src[key].index if src[key].index?
-        tgt[key].unique = src[key].unique if src[key].unique?
+        tgt[key] = _.extend({}, src[key], { type: Date })
       else if src[key].type == 'boolean'
-        tgt[key] = { type: Boolean, required: !!src[key].required }
-        tgt[key].default = src[key].default if src[key].default?
-        tgt[key].index = src[key].index if src[key].index?
-        tgt[key].unique = src[key].unique if src[key].unique?
+        tgt[key] = _.extend({}, src[key], { type: Boolean })
       else if src[key].type == 'hasOne'
         tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation }
       else if src[key].type == 'hasMany'
-        tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName || key }]
-        allspec[src[key].model][src[key].inverseName || key] = [{ type: ObjectId, ref: modelName, inverseName: key }]
-      else
-        throw new Error("Invalid type: " + src[key].type)
+        tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName }]
+        allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
 
   api.defModels = (models) ->
-    allspec = {}
-    Object.keys(models).forEach (modelName) ->
-      allspec[modelName] = {}
 
     rest = {}
 
     Object.keys(models).forEach (modelName) ->
-      spec = allspec[modelName]
-      owners = models[modelName].owners || {}
+      spec = {}
       inspec = models[modelName].fields || {}
+      desugarModel(modelName, spec, inspec, Object.keys(inspec))
+      rest[modelName] = _.extend({}, models[modelName], { fields: spec })
+      if !rest[modelName].owners
+        rest[modelName].owners = {}
+
+    specmodels = rest
+
+    newrest = {}
+
+    allspec = {}
+    Object.keys(rest).forEach (modelName) ->
+      allspec[modelName] = {}
+
+    Object.keys(rest).forEach (modelName) ->
+      spec = allspec[modelName]
+      owners = rest[modelName].owners || {}
+      inspec = rest[modelName].fields || {}
       specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
-      rest[modelName] = { owners: owners, spec: spec }
+      newrest[modelName] = _.extend({}, rest[modelName], { fields: spec })
 
-    Object.keys(models).forEach (modelName) ->
-      defModel modelName, models[modelName], rest[modelName].spec, rest[modelName].owners
+    # avsockrad. Kör spec-transform2
 
-  defModel = (name, conf, spec, owners) ->
+    Object.keys(newrest).forEach (modelName) ->
+      defModel modelName, newrest[modelName]
+
+  defModel = (name, conf) ->
+
+    spec = conf.fields
+    owners = conf.owners
 
     # set owners
     Object.keys(owners).forEach (ownerName) ->
@@ -424,8 +453,7 @@ exports.create = ->
     owners: getOwners(modelName)
     manyToMany: getManyToMany(modelName)
 
-  api.getModels = ->
-    Object.keys(models)
+  api.getModels = -> specmodels
 
 
 
