@@ -575,5 +575,18 @@ describe 'Manikin', ->
       contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
     .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact.id }, noErr (pet) ->
       pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
+
+    .list('pets', {}, noErr ((res) -> res.length.should.eql 1))
+    .list('contacts', {}, noErr ((res) -> res.length.should.eql 1))
+    .list('companies2', {}, noErr ((res) -> res.length.should.eql 1))
+    .list('accounts', {}, noErr ((res) -> res.length.should.eql 1))
+
+    .then('delOne', -> @ 'companies2', { id: saved.company.id }, noErr())
+
+    .list('pets', {}, noErr ((res) -> res.length.should.eql 0))
+    .list('contacts', {}, noErr ((res) -> res.length.should.eql 0))
+    .list('companies2', {}, noErr ((res) -> res.length.should.eql 0))
+    .list('accounts', {}, noErr ((res) -> res.length.should.eql 1))
+
     .then -> api.close(done)
 
