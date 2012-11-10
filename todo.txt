@@ -1,0 +1,13 @@
+testa med och utan inverseName på many-to-many-relationer
+
+skriv också något som gör att relationen baseras på modellernas namn och inte har ett eget.
+så länge ingen av modellerna är underordnade varandra (direkt eller indirekt) så funkar detta
+(men dessutom bara en gång per modell-par, givetvis)
+
+100% coverage
+
+The kinds of tests that have been written for sally should be applied directly to this layer
+
+Get rid of "mongojs"
+
+The code is becoming a mess; do some refactoring
