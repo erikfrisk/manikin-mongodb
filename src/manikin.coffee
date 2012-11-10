@@ -482,20 +482,27 @@ exports.create = ->
     , next
 
   preRemoveCascadeNonNullable = (owner, id, next) ->
+    manys = getManyToMany(owner.modelName)
 
-    flattenedModels = getOwnedModels(owner.modelName)
+    async.forEach manys, (many, callback) ->
+      obj = _.object([[many.inverseName, id]])
+      models[many.ref].update obj, { $pull: obj }, callback
+    , (err) ->
 
-    async.forEach flattenedModels, (mod, callback) ->
-      internalListSub mod.name, mod.field, id, (err, data) ->
-        async.forEach data, (item, callback) ->
-          item.remove callback
-        , callback
-    , next
+      # what to do on error?
+
+      flattenedModels = getOwnedModels(owner.modelName)
+
+      async.forEach flattenedModels, (mod, callback) ->
+        internalListSub mod.name, mod.field, id, (err, data) ->
+          async.forEach data, (item, callback) ->
+            item.remove callback
+          , callback
+      , next
 
 
 
   preRemoveCascadeNullable = (owner, id, next) ->
-
     ownedModels = Object.keys(models).map (modelName) ->
       paths = models[modelName].schema.paths
       Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && paths[x].options.ref == owner.modelName && !paths[x].options['x-owner']).map (x) ->
