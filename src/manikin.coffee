@@ -204,7 +204,7 @@ exports.create = ->
       return
 
     filter = preprocFilter(filter)
-    finalFilter = _.extend({}, filter, _.makeObject(outer, id))
+    finalFilter = _.extend({}, filter, _.object([[outer, id]]))
 
     models[model].find finalFilter, callback
 
@@ -225,7 +225,7 @@ exports.create = ->
 
     models[primaryModel].findById primaryId, propagate callback, (data) ->
       conditions = { _id: primaryId }
-      update = { $pull: _.makeObject(propertyName, secondaryId) }
+      update = { $pull: _.object([[propertyName, secondaryId]]) }
       options = { }
       models[primaryModel].update conditions, update, options, (err, numAffected) ->
         callback(err)
