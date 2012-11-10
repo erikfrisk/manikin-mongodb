@@ -11,3 +11,5 @@ The kinds of tests that have been written for sally should be applied directly t
 Get rid of "mongojs"
 
 The code is becoming a mess; do some refactoring
+
+Måste ju testa lite "hasOne". Helt sjukt att släppa koden utan det.
