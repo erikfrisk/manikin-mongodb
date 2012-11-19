@@ -577,6 +577,43 @@ describe 'Manikin', ->
 
 
 
+  it "should prevent duplicate many-to-many values, even when data is posted in parallel, to both end-points", (done) ->
+    api = manikin.create()
+
+    api.defModels
+      typeC:
+        fields:
+          name: 'string'
+
+      typeD:
+        fields:
+          name: 'string'
+          belongsTo: { type: 'hasMany', model: 'typeC', inverseName: 'belongsTo2' }
+
+    saved = {}
+
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'typeC', { name: 'c1' }, noErr (c1) ->
+        api.post 'typeD', { name: 'd1' }, noErr (d1) ->
+          async.forEach [['typeC', c1.id, 'belongsTo2', d1.id], ['typeD', d1.id, 'belongsTo', c1.id]], (item, callback) ->
+            first = true
+            f = noErr (result) ->
+              if first
+                result.should.eql {}
+                # { status: 'inserted' }
+                first = false
+              else
+                result.should.eql {}
+                # { status: 'already there' } # "insert already in progress"
+              callback()
+            api.postMany.apply(api, item.concat([f]))
+          , ->
+            api.list 'typeC', {}, noErr (x) ->
+              x[0].belongsTo2.length.should.eql 1
+              api.close(done)
+
+
+
   it "should not be ok to post without specifiying the owner", (done) ->
     api = manikin.create()
 
