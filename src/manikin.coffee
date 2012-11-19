@@ -239,6 +239,7 @@ exports.create = ->
     , callback
 
 
+  insertOps = []
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
@@ -251,20 +252,52 @@ exports.create = ->
     secondaryModel = mm.ref
     inverseName = mm.inverseName
 
-    models[primaryModel].findById primaryId, propagate callback, (data) ->
-      models[secondaryModel].findById secondaryId, propagate callback, (data2) ->
+    insertOpNow = [
+      { primaryModel: primaryModel, primaryId: primaryId, propertyName: propertyName, secondaryId: secondaryId }
+      { primaryModel: secondaryModel, primaryId: secondaryId, propertyName: inverseName, secondaryId: primaryId }
+    ]
 
-        if -1 == data[propertyName].indexOf secondaryId
-          data[propertyName].push secondaryId
+    insertOpMatch = (x1, x2) ->
+      x1.primaryModel == x2.primaryModel &&
+      x1.primaryId    == x2.primaryId    &&
+      x1.propertyName == x2.propertyName &&
+      x1.secondaryId  == x2.secondaryId
 
-        if -1 == data2[inverseName].indexOf primaryId
-          data2[inverseName].push primaryId
+    hasAlready = insertOps.some((x) -> insertOpNow.some((y) -> insertOpMatch(x, y)))
+
+    if hasAlready
+      callback(null, { status: 'insert already in progress' })
+      return
+
+    insertOpNow.forEach (op) ->
+      insertOps.push(op)
+
+    async.map insertOpNow, (item, callback) ->
+      models[item.primaryModel].findById item.primaryId, callback
+    , propagate callback, (datas) ->
+
+      updated = [false, false]
+
+      insertOpNow.forEach (conf, i) ->
+        if -1 == datas[i][conf.propertyName].indexOf conf.secondaryId
+          datas[i][conf.propertyName].push conf.secondaryId
+          updated[i] = true
+
+      async.forEach [0, 1], (index, callback) ->
+        if updated[index]
+          datas[index].save(callback)
+        else
+          callback()
+      , (err) ->
+
+        insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
 
         # how to handle if one of these manages to save, but not the other?
         # the database will end up in an invalid state! is it possible to do some kind of transaction?
-        data.save propagate callback, ->
-          data2.save (err) ->
-            callback(err, {})
+        # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
+
+        callback(err, { status: (if updated.some((x) -> x) then 'inserted' else 'already inserted') })
+
 
   api.getMany = (primaryModel, primaryId, propertyName, callback) ->
     models[primaryModel]
