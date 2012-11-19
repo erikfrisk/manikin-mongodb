@@ -252,19 +252,25 @@ exports.create = ->
     secondaryModel = mm.ref
     inverseName = mm.inverseName
 
-    insertOp = { primaryModel: primaryModel, primaryId: primaryId, propertyName: propertyName, secondaryId: secondaryId }
+    insertOpNow = [
+      { primaryModel: primaryModel, primaryId: primaryId, propertyName: propertyName, secondaryId: secondaryId }
+      { primaryModel: secondaryModel, primaryId: secondaryId, propertyName: inverseName, secondaryId: primaryId }
+    ]
 
-    hasAlready = insertOps.some (x) ->
-      x.primaryModel == primaryModel &&
-      x.primaryId == primaryId &&
-      x.propertyName == propertyName &&
-      x.secondaryId == secondaryId
+    insertOpMatch = (x1, x2) ->
+      x1.primaryModel == x2.primaryModel &&
+      x1.primaryId    == x2.primaryId    &&
+      x1.propertyName == x2.propertyName &&
+      x1.secondaryId  == x2.secondaryId
+
+    hasAlready = insertOps.some((x) -> insertOpNow.some((y) -> insertOpMatch(x, y)))
 
     if hasAlready
-      callback(null, {})
+      callback(null, { })
       return
 
-    insertOps.push(insertOp)
+    insertOpNow.forEach (op) ->
+      insertOps.push(op)
 
     models[primaryModel].findById primaryId, propagate callback, (data) ->
       models[secondaryModel].findById secondaryId, propagate callback, (data2) ->
@@ -287,7 +293,7 @@ exports.create = ->
             callback()
         , (err) ->
 
-          insertOps = insertOps.filter (x) -> x != insertOp
+          insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
 
           # how to handle if one of these manages to save, but not the other?
           # the database will end up in an invalid state! is it possible to do some kind of transaction?
