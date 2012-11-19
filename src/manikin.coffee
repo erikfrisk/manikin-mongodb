@@ -239,6 +239,7 @@ exports.create = ->
     , callback
 
 
+  insertOps = []
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
@@ -251,20 +252,49 @@ exports.create = ->
     secondaryModel = mm.ref
     inverseName = mm.inverseName
 
+    insertOp = { primaryModel: primaryModel, primaryId: primaryId, propertyName: propertyName, secondaryId: secondaryId }
+
+    hasAlready = insertOps.some (x) ->
+      x.primaryModel == primaryModel &&
+      x.primaryId == primaryId &&
+      x.propertyName == propertyName &&
+      x.secondaryId == secondaryId
+
+    if hasAlready
+      callback(null, {})
+      return
+
+    insertOps.push(insertOp)
+
     models[primaryModel].findById primaryId, propagate callback, (data) ->
       models[secondaryModel].findById secondaryId, propagate callback, (data2) ->
 
+        datas = [data, data2]
+        updated = [false, false]
+
         if -1 == data[propertyName].indexOf secondaryId
           data[propertyName].push secondaryId
+          updated[0] = true
 
         if -1 == data2[inverseName].indexOf primaryId
           data2[inverseName].push primaryId
+          updated[1] = true
 
-        # how to handle if one of these manages to save, but not the other?
-        # the database will end up in an invalid state! is it possible to do some kind of transaction?
-        data.save propagate callback, ->
-          data2.save (err) ->
-            callback(err, {})
+        async.forEach [0, 1], (index, callback) ->
+          if updated[index]
+            datas[index].save(callback)
+          else
+            callback()
+        , (err) ->
+
+          insertOps = insertOps.filter (x) -> x != insertOp
+
+          # how to handle if one of these manages to save, but not the other?
+          # the database will end up in an invalid state! is it possible to do some kind of transaction?
+          # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
+
+          callback(err, {})
+
 
   api.getMany = (primaryModel, primaryId, propertyName, callback) ->
     models[primaryModel]
