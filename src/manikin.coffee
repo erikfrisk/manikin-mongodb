@@ -266,40 +266,37 @@ exports.create = ->
     hasAlready = insertOps.some((x) -> insertOpNow.some((y) -> insertOpMatch(x, y)))
 
     if hasAlready
-      callback(null, { })
+      callback(null, { status: 'insert already in progress' })
       return
 
     insertOpNow.forEach (op) ->
       insertOps.push(op)
 
-    models[primaryModel].findById primaryId, propagate callback, (data) ->
-      models[secondaryModel].findById secondaryId, propagate callback, (data2) ->
+    async.map insertOpNow, (item, callback) ->
+      models[item.primaryModel].findById item.primaryId, callback
+    , propagate callback, (datas) ->
 
-        datas = [data, data2]
-        updated = [false, false]
+      updated = [false, false]
 
-        if -1 == data[propertyName].indexOf secondaryId
-          data[propertyName].push secondaryId
-          updated[0] = true
+      insertOpNow.forEach (conf, i) ->
+        if -1 == datas[i][conf.propertyName].indexOf conf.secondaryId
+          datas[i][conf.propertyName].push conf.secondaryId
+          updated[i] = true
 
-        if -1 == data2[inverseName].indexOf primaryId
-          data2[inverseName].push primaryId
-          updated[1] = true
+      async.forEach [0, 1], (index, callback) ->
+        if updated[index]
+          datas[index].save(callback)
+        else
+          callback()
+      , (err) ->
 
-        async.forEach [0, 1], (index, callback) ->
-          if updated[index]
-            datas[index].save(callback)
-          else
-            callback()
-        , (err) ->
+        insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
 
-          insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
+        # how to handle if one of these manages to save, but not the other?
+        # the database will end up in an invalid state! is it possible to do some kind of transaction?
+        # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
 
-          # how to handle if one of these manages to save, but not the other?
-          # the database will end up in an invalid state! is it possible to do some kind of transaction?
-          # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
-
-          callback(err, {})
+        callback(err, { status: (if updated.some((x) -> x) then 'inserted' else 'already inserted') })
 
 
   api.getMany = (primaryModel, primaryId, propertyName, callback) ->

@@ -555,22 +555,19 @@ describe 'Manikin', ->
           belongsTo: { type: 'hasMany', model: 'typeA', inverseName: 'belongsTo2' }
 
     saved = {}
+    resultStatuses = {}
 
     api.connect 'mongodb://localhost/manikin-test', noErr ->
       api.post 'typeA', { name: 'a1' }, noErr (a1) ->
         api.post 'typeB', { name: 'b1' }, noErr (b1) ->
           async.forEach [1,2,3], (item, callback) ->
-            first = true
             api.postMany 'typeB', b1.id, 'belongsTo', a1.id, noErr (result) ->
-              if first
-                result.should.eql {}
-                # { status: 'inserted' }
-                first = false
-              else
-                result.should.eql {}
-                # { status: 'already there' } # "insert already in progress"
+              resultStatuses[result.status] = resultStatuses[result.status] || 0
+              resultStatuses[result.status]++
               callback()
           , ->
+            resultStatuses['inserted'].should.eql 1
+            resultStatuses['insert already in progress'].should.eql 2
             api.list 'typeA', {}, noErr (x) ->
               x[0].belongsTo2.length.should.eql 1
               api.close(done)
@@ -591,23 +588,20 @@ describe 'Manikin', ->
           belongsTo: { type: 'hasMany', model: 'typeC', inverseName: 'belongsTo2' }
 
     saved = {}
+    resultStatuses = {}
 
     api.connect 'mongodb://localhost/manikin-test', noErr ->
       api.post 'typeC', { name: 'c1' }, noErr (c1) ->
         api.post 'typeD', { name: 'd1' }, noErr (d1) ->
           async.forEach [['typeC', c1.id, 'belongsTo2', d1.id], ['typeD', d1.id, 'belongsTo', c1.id]], (item, callback) ->
-            first = true
             f = noErr (result) ->
-              if first
-                result.should.eql {}
-                # { status: 'inserted' }
-                first = false
-              else
-                result.should.eql {}
-                # { status: 'already there' } # "insert already in progress"
+              resultStatuses[result.status] = resultStatuses[result.status] || 0
+              resultStatuses[result.status]++
               callback()
             api.postMany.apply(api, item.concat([f]))
           , ->
+            resultStatuses['inserted'].should.eql 1
+            resultStatuses['insert already in progress'].should.eql 1
             api.list 'typeC', {}, noErr (x) ->
               x[0].belongsTo2.length.should.eql 1
               api.close(done)
