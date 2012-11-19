@@ -541,8 +541,39 @@ describe 'Manikin', ->
 
 
 
+  it "should prevent duplicate many-to-many values, even when data is posted in parallel", (done) ->
+    api = manikin.create()
 
+    api.defModels
+      typeA:
+        fields:
+          name: 'string'
 
+      typeB:
+        fields:
+          name: 'string'
+          belongsTo: { type: 'hasMany', model: 'typeA', inverseName: 'belongsTo2' }
+
+    saved = {}
+
+    api.connect 'mongodb://localhost/manikin-test', noErr ->
+      api.post 'typeA', { name: 'a1' }, noErr (a1) ->
+        api.post 'typeB', { name: 'b1' }, noErr (b1) ->
+          async.forEach [1,2,3], (item, callback) ->
+            first = true
+            api.postMany 'typeB', b1.id, 'belongsTo', a1.id, noErr (result) ->
+              if first
+                result.should.eql {}
+                # { status: 'inserted' }
+                first = false
+              else
+                result.should.eql {}
+                # { status: 'already there' } # "insert already in progress"
+              callback()
+          , ->
+            api.list 'typeA', {}, noErr (x) ->
+              x[0].belongsTo2.length.should.eql 1
+              api.close(done)
 
 
 
