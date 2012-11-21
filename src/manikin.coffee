@@ -1,12 +1,24 @@
 async = require 'async'
 _ = require 'underscore'
-mongoose = require 'mongoose'
-mongojs = require 'mongojs'
-ObjectId = mongoose.Schema.ObjectId
+mongojs = require 'mongojs' # arghhh!! get rid of this!
 
 exports.create = ->
 
+  # Silly hack to make this project testable without caching gotchas
+  if process.env.NODE_ENV != 'production'
+    for key of require.cache
+      delete require.cache[key]
+  mongoose = require 'mongoose'
+
+
+  # Shorthands for some moongoose types
+  Schema = mongoose.Schema
+  Mixed = mongoose.Schema.Types.Mixed
+  ObjectID = mongoose.mongo.ObjectID  # Yes, they seriously have two different objects with
+  ObjectId = mongoose.Schema.ObjectId # the same name but with different casings. Idiots...
+
   db = null
+  connection = null
   api = {}
   models = {}
   specmodels = {}
@@ -19,15 +31,15 @@ exports.create = ->
       else
         f.apply(this, args)
 
-  model = (name, schema) ->
-    ss = new mongoose.Schema schema,
+  makeModel = (name, schema) ->
+    ss = new Schema schema,
       strict: true
     ss.set('versionKey', false)
-    mongoose.model name, ss
+    connection.model name, ss, name
 
   api.isValidId = (id) ->
     try
-      mongoose.mongo.ObjectID(id)
+      ObjectID(id)
       true
     catch ex
       false
@@ -62,14 +74,18 @@ exports.create = ->
   # Connecting to db
   # ================
   api.connect = (databaseUrl, callback) ->
-    mongoose.connect databaseUrl
-    db = mongojs.connect databaseUrl, Object.keys(api.getModels())
-    db[Object.keys(models)[0]].find (err) ->
+    connection = mongoose.createConnection databaseUrl
+
+    toDef.forEach ([name, v]) ->
+      defModel name, v
+
+    db2 = mongojs.connect databaseUrl, Object.keys(api.getModels())
+    db2[Object.keys(models)[0]].find (err) ->
       callback(err)
 
 
   api.close = (callback) ->
-    mongoose.connection.close()
+    connection.close()
     callback()
 
 
@@ -345,7 +361,7 @@ exports.create = ->
   specTransform = (allspec, modelName, tgt, src, keys) ->
     keys.forEach (key) ->
       if src[key].type == 'mixed'
-        tgt[key] = { type: mongoose.Schema.Types.Mixed }
+        tgt[key] = { type: Mixed }
       else if src[key].type == 'nested'
         tgt[key] = {}
         specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
@@ -398,7 +414,12 @@ exports.create = ->
     # avsockrad. Kör spec-transform2
 
     Object.keys(newrest).forEach (modelName) ->
-      defModel modelName, newrest[modelName]
+      if connection == null
+        toDef.push([modelName, newrest[modelName]])
+      else
+        defModel modelName, newrest[modelName]
+
+  toDef = []
 
   defModel = (name, conf) ->
 
@@ -429,7 +450,7 @@ exports.create = ->
 
     meta[name] = { defaultSort: conf.defaultSort }
 
-    models[name] = model name, spec
+    models[name] = makeModel name, spec
 
     models[name].schema.pre 'save', nullablesValidation(models[name].schema)
     models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
