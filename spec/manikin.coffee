@@ -747,22 +747,36 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       .then 'post', -> @ 'companies2', { name: 'n', orgnr: 'nbr', account: saved.account.id }, noErr (company) ->
         saved.company = company
         company.should.have.keys ['id', 'name', 'orgnr', 'account']
+      .then 'post', -> @ 'companies2', { name: 'n2', orgnr: 'nbr', account: saved.account.id }, noErr (company2) ->
+        saved.company2 = company2
+        company2.should.have.keys ['id', 'name', 'orgnr', 'account']
       .then 'post', -> @ 'contacts', { email: '@', phone: '112', company: saved.company.id }, noErr (contact) ->
         saved.contact = contact
         contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
+      .then 'post', -> @ 'contacts', { email: '@2', phone: '911', company: saved.company2.id }, noErr (contact2) ->
+        saved.contact2 = contact2
+        contact2.should.have.keys ['id', 'email', 'phone', 'account', 'company']
       .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact.id }, noErr (pet) ->
         pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
+        pet.contact.should.eql saved.contact.id
+        pet.company.should.eql saved.company.id
+        pet.account.should.eql saved.account.id
+      .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact2.id }, noErr (pet) ->
+        pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
+        pet.contact.should.eql saved.contact2.id
+        pet.company.should.eql saved.company2.id
+        pet.account.should.eql saved.account.id
 
-      .list('pets', {}, noErr ((res) -> res.length.should.eql 1))
-      .list('contacts', {}, noErr ((res) -> res.length.should.eql 1))
-      .list('companies2', {}, noErr ((res) -> res.length.should.eql 1))
+      .list('pets', {}, noErr ((res) -> res.length.should.eql 2))
+      .list('contacts', {}, noErr ((res) -> res.length.should.eql 2))
+      .list('companies2', {}, noErr ((res) -> res.length.should.eql 2))
       .list('accounts', {}, noErr ((res) -> res.length.should.eql 1))
 
       .then('delOne', -> @ 'companies2', { id: saved.company.id }, noErr())
 
-      .list('pets', {}, noErr ((res) -> res.length.should.eql 0))
-      .list('contacts', {}, noErr ((res) -> res.length.should.eql 0))
-      .list('companies2', {}, noErr ((res) -> res.length.should.eql 0))
+      .list('pets', {}, noErr ((res) -> res.length.should.eql 1))
+      .list('contacts', {}, noErr ((res) -> res.length.should.eql 1))
+      .list('companies2', {}, noErr ((res) -> res.length.should.eql 1))
       .list('accounts', {}, noErr ((res) -> res.length.should.eql 1))
 
       .then -> api.close(done)

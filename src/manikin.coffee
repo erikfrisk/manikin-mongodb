@@ -196,7 +196,7 @@ exports.create = ->
     else
       # Should get all the owners and not just the first.
       # At the moment Im only working with single owners though, so it's for for now...
-      api.getOne owners[0], { id: indata[ownersRaw[0].sing] }, (err, ownerdata) ->
+      api.getOne owners[0], { filter: { id: indata[ownersRaw[0].sing] } }, (err, ownerdata) ->
         paths = models[owners[0]].schema.paths
         metaFields = Object.keys(paths).filter (key) -> !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
         metaFields.forEach (key) ->
