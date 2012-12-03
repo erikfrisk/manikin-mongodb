@@ -350,7 +350,7 @@ exports.create = ->
         tgt[key].default = src[key].default if src[key].default?
         tgt[key].validate = src[key].validate if src[key].validate?
       else if src[key].type == 'hasOne'
-        tgt[key] = { ref: src[key].model, validation: src[key].validation }
+        tgt[key] = src[key]
       else if src[key].type == 'hasMany'
         tgt[key] = src[key]
         tgt[key].inverseName = src[key].inverseName || key

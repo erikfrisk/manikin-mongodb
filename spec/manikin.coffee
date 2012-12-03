@@ -781,3 +781,47 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       .then -> api.close(done)
 
+
+    it "should provide has-one-relations", (done) ->
+      api = manikin.create()
+      api.defModels
+
+        accounts:
+          defaultSort: 'name'
+          fields:
+            email: 'string'
+
+        questions:
+          owners: account: 'accounts'
+          defaultSort: 'order'
+          fields:
+            text: 'string'
+
+        devices:
+          owners: account: 'accounts'
+          fields:
+            name: 'string'
+
+        answers:
+          owners: question: 'questions'
+          fields:
+            option: 'number'
+            device:
+              type: 'hasOne'
+              model: 'devices'
+
+      saved = {}
+      promise(api).connect(connectionString, noErr())
+      .post 'accounts', { email: 'some@email.com' }, noErr (account) ->
+        saved.account = account
+      .then 'post', -> @ 'questions', { name: 'q1', account: saved.account.id }, noErr (question) ->
+        saved.q1 = question
+      .then 'post', -> @ 'questions', { name: 'q2', account: saved.account.id }, noErr (question) ->
+        saved.q2 = question
+      .then 'post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
+        saved.d1 = device
+      .then 'post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
+        saved.d2 = device
+      .then 'post', -> @ 'answers', { option: 1, question: saved.q1.id, device: saved.d1.id }, noErr (answer) ->
+        saved.d1.id.should.eql answer.device
+      .then(done)
