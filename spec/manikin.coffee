@@ -223,6 +223,14 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       dropDatabase(connectionString, done)
 
 
+
+    it "should be able to connect even if no models have been defined", (done) ->
+      api = manikin.create()
+      promise(api).connect connectionString, noErr ->
+        api.close(done)
+
+
+
     it "reads1", (done) ->
 
       api = manikin.create()

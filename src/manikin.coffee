@@ -1,6 +1,5 @@
 async = require 'async'
 _ = require 'underscore'
-mongojs = require 'mongojs' # arghhh!! get rid of this!
 
 exports.create = ->
 
@@ -79,9 +78,7 @@ exports.create = ->
     toDef.forEach ([name, v]) ->
       defModel name, v
 
-    db2 = mongojs.connect databaseUrl, Object.keys(api.getModels())
-    db2[Object.keys(models)[0]].find (err) ->
-      callback(err)
+    callback()
 
 
   api.close = (callback) ->
