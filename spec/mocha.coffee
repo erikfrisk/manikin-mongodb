@@ -1,9 +1,12 @@
 manikin = require('./setup').requireSource('manikin')
 mongojs = require 'mongojs'
+_ = require 'underscore'
+async = require 'async'
 
 dropDatabase = (connStr, done) ->
-  mongojs.connect(connStr).dropDatabase done
+  conn = mongojs.connect(connStr)
+  conn.collectionNames (err, colls) ->
+    collNames = colls.map ({ name }) -> _(name.split('.')).last()
+    async.forEach collNames.slice(1), conn.dropCollection, done
 
-connectionString = 'mongodb://localhost/manikin-test'
-
-require('../spec/manikin').runTests(manikin, dropDatabase, connectionString)
+require('../spec/manikin').runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
