@@ -1,3 +1,5 @@
+"use strict"
+
 async = require 'async'
 _ = require 'underscore'
 
