@@ -231,45 +231,36 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
-    it "reads1", (done) ->
+    describe 'should not save configuration between test runs', ->
+      commonModelName = 'stuffzz'
 
-      api = manikin.create()
-
-      api.defModels
-        stuffzz:
+      it "stores things for the first test run", (done) ->
+        api = manikin.create()
+        api.defModels _.object([[commonModelName,
           fields:
             v1: 'string'
+        ]])
+        promise(api).connect(connectionString, noErr())
+        .post(commonModelName, { v2: '1', v1: '2' }, noErr())
+        .list commonModelName, {}, noErr (list) ->
+          list.length.should.eql 1
+          list[0].should.have.keys ['v1', 'id']
+          list[0].v1.should.eql '2'
+          api.close(done)
 
-      saved = {}
-
-      promise(api).connect(connectionString, noErr())
-      .post('stuffzz', { v110: '1', v1: '2' }, noErr())
-      .list 'stuffzz', {}, noErr (list) ->
-        console.log list
-        api.close(done)
-
-
-    it "reads2", (done) ->
-
-      api = manikin.create()
-
-      api.defModels
-        stuffzz:
+      it "stores different things for the second test run", (done) ->
+        api = manikin.create()
+        api.defModels _.object([[commonModelName,
           fields:
-            v110: 'string'
-
-      saved = {}
-
-      promise(api).connect(connectionString, noErr())
-      .post('stuffzz', { v110: '3', v1: '4' }, noErr())
-      .list 'stuffzz', {}, noErr (list) ->
-        console.log list
-        api.close(done)
-
-
-
-
-
+            v2: 'string'
+        ]])
+        promise(api).connect(connectionString, noErr())
+        .post(commonModelName, { v2: '3', v1: '4' }, noErr())
+        .list commonModelName, {}, noErr (list) ->
+          list.length.should.eql 1
+          list[0].should.have.keys ['v2', 'id']
+          list[0].v2.should.eql '3'
+          api.close(done)
 
 
 
