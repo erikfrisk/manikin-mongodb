@@ -113,6 +113,20 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
+  it "should fail if a field is missing its type", ->
+    api = manikin.create()
+
+    (->
+      api.defModels
+        some_model:
+          fields:
+            name: { unique: true }
+            age: { type: 'string', unique: true }
+            whatever: { unique: true }
+    ).should.throw('must assign a type: name')
+
+
+
   it "should recognize valid object ids", ->
     api = manikin.create()
     api.isValidId('abc').should.eql false

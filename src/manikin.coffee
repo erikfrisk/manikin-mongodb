@@ -332,7 +332,7 @@ exports.create = ->
         obj[key] = { type: src[key] }
         desugarModel(modelName, tgt, obj, [key])
       else if !src[key].type?
-        throw new Error("must assign a type: " + JSON.stringify(keys))
+        throw new Error("must assign a type: " + key)
       else if src[key].type == 'mixed'
         tgt[key] = { type: 'mixed' }
       else if src[key].type == 'nested'
