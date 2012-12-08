@@ -1,5 +1,4 @@
 #!/bin/sh
-
 coffee -co lib src
 mkdir -p test-coverage
 rm -rf test-cov

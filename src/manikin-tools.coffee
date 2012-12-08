@@ -114,4 +114,3 @@ exports.getMeta = (specmodels) ->
     meta[metaName].owns = _.flatten(Object.keys(meta).map (mn) -> meta[mn].owners.filter((x) -> x.plur == metaName).map (x) -> { name: mn, field: x.sing })
 
   meta
-
