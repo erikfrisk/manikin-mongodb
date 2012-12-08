@@ -12,7 +12,7 @@ it "should have the right methods", ->
 
 
 
-it "should allow model definitions in bulk", ->
+it "should support desugaring of models", ->
   dataIn =
     surveys:
       fields:
@@ -37,6 +37,135 @@ it "should allow model definitions in bulk", ->
       indirectOwners: {}
       fields:
         name: { type: 'string', required: false, index: false, unique: false }
+
+  tools.desugar(dataIn).should.eql(dataOut)
+
+
+
+it "should support various different types", ->
+  dataIn =
+    surveys:
+      fields:
+        birth: 'date'
+        count: 'number'
+        name: 'string'
+        done: 'boolean'
+        various: 'mixed'
+        question:
+          type: 'hasOne'
+          model: 'questions'
+        qs:
+          type: 'hasMany'
+          model: 'questions'
+        qs2:
+          type: 'hasMany'
+          model: 'questions'
+          inverseName: 'inv'
+        ne:
+          type: 'nested'
+          v1: 'number'
+          v2: 'string'
+    questions:
+      owners:
+        survey: 'surveys'
+      fields:
+        name: 'string'
+
+  dataOut =
+    surveys:
+      owners: {}
+      indirectOwners: {}
+      fields:
+        birth:    { type: 'date',    required: false, index: false, unique: false }
+        count:    { type: 'number',  required: false, index: false, unique: false }
+        name:     { type: 'string',  required: false, index: false, unique: false }
+        done:     { type: 'boolean', required: false, index: false, unique: false }
+        various:  { type: 'mixed' }
+        question: { type: 'hasOne', model: 'questions' }
+        qs:       { type: 'hasMany', model: 'questions', inverseName: 'qs' }
+        qs2:      { type: 'hasMany', model: 'questions', inverseName: 'inv' }
+        ne:       {
+          type: 'nested'
+          v1:     { type: 'number',  required: false, index: false, unique: false }
+          v2:     { type: 'string',  required: false, index: false, unique: false }
+        }
+    questions:
+      owners:
+        survey: 'surveys'
+      indirectOwners: {}
+      fields:
+        name: { type: 'string', required: false, index: false, unique: false }
+
+  tools.desugar(dataIn).should.eql(dataOut)
+
+
+
+it "should support indirect owners", ->
+  dataIn =
+    surveys: {}
+    questions:
+      owners:
+        survey: 'surveys'
+    answers:
+      owners:
+        question: 'questions'
+    options:
+      owners:
+        answer: 'answers'
+
+  dataOut =
+    surveys:
+      fields: {}
+      owners: {}
+      indirectOwners: {}
+    questions:
+      fields: {}
+      owners: { survey: 'surveys' }
+      indirectOwners: {}
+    answers:
+      fields: {}
+      owners: { question: 'questions' }
+      indirectOwners: { survey: 'surveys' }
+    options:
+      fields: {}
+      owners: { answer: 'answers' }
+      indirectOwners: { survey: 'surveys', question: 'questions' }
+
+  tools.desugar(dataIn).should.eql(dataOut)
+
+
+
+it "should support validations", ->
+  f = (x) -> x.length > 5
+
+  dataIn =
+    questions:
+      fields:
+        name: { type: 'string', validate: f }
+
+  dataOut =
+    questions:
+      fields:
+        name: { type: 'string', required: false, unique: false, index: false, validate: f }
+      owners: {}
+      indirectOwners: {}
+
+  tools.desugar(dataIn).should.eql(dataOut)
+
+
+
+it "should support default values", ->
+  dataIn =
+    questions:
+      fields:
+        name: { type: 'string', default: 'hej' }
+
+  dataOut =
+    questions:
+      fields:
+        name: { type: 'string', required: false, unique: false, index: false, default: 'hej' }
+      owners: {}
+      indirectOwners: {}
 
   tools.desugar(dataIn).should.eql(dataOut)
 
@@ -79,6 +208,8 @@ it "should provide an interface for meta data", ->
         orgnr: { type: 'string', default: '' }
 
     customers:
+      owners:
+        company: 'companies'
       fields:
         name: { type: 'string' }
         at: { type: 'hasMany', model: 'companies' }
@@ -100,18 +231,9 @@ it "should provide an interface for meta data", ->
         type: 'string'
       ]
 
-    customers:
-      owners: []
-      owns: []
-      manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]  
-      fields: [
-        { name: 'id',   readonly: true,  required: false, type: 'string'  }
-        { name: 'name', readonly: false, required: false, type: 'string'  }
-      ]
-
     companies:
       owners: [{ plur: 'accounts', sing: 'account' }]
-      owns: []
+      owns: [{ name: 'customers', field: 'company' }]
       manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
       fields: [
         name: 'account'
@@ -133,4 +255,15 @@ it "should provide an interface for meta data", ->
         readonly: false
         required: false
         type: 'string'
+      ]
+
+    customers:
+      owners: [{ plur: 'companies', sing: 'company' }]
+      owns: []
+      manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]
+      fields: [
+        { name: 'account', readonly: true,  required: true,  type: 'string'  }
+        { name: 'company', readonly: true,  required: true,  type: 'string'  }
+        { name: 'id',      readonly: true,  required: false, type: 'string'  }
+        { name: 'name',    readonly: false, required: false, type: 'string'  }
       ]
