@@ -23,7 +23,8 @@ massageOne = (x) ->
   x
 
 
-massageCore = (r2) -> if Array.isArray r2 then r2.map massageOne else massageOne r2
+massageCore = (r2) -> if Array.isArray r2 then r2.map(massageOne) else massageOne(r2)
+
 
 massage = (r2) -> massageCore(JSON.parse(JSON.stringify(r2)))
 
@@ -33,7 +34,6 @@ massaged = (f) -> (err, data) ->
     f(err)
   else
     f(null, massage(data))
-
 
 
 propagate = (callback, f) ->
@@ -57,7 +57,6 @@ getKeys = (data, target = [], prefix = '') ->
 
 
 
-
 # Manikin constructor
 # =============================================================================
 
@@ -76,18 +75,45 @@ exports.create = ->
   ObjectID = mongoose.mongo.ObjectID  # Yes, they seriously have two different objects with
   ObjectId = mongoose.Schema.ObjectId # the same name but with different casings. Idiots...
 
-  db = null
-  connection = null
   api = {}
   models = {}
   specmodels = {}
 
-  makeModel = (name, schema) ->
-    ss = new Schema schema,
-      strict: true
+  # Mongoose- or state-dependent helpers
+  # ====================================
+  makeModel = (connection, name, schema) ->
+    ss = new Schema(schema, { strict: true })
     ss.set('versionKey', false)
-    connection.model name, ss, name
+    connection.model(name, ss, name)
 
+  getMeta = (modelName) -> tools.getMeta(specmodels)[modelName]
+
+
+
+  # Connecting
+  # ==========
+  do ->
+    connection = null
+
+    api.connect = (databaseUrl, callback) ->
+      connection = mongoose.createConnection(databaseUrl)
+
+      toDef.forEach ([name, v]) ->
+        models[name] = makeModel(connection, name, v.fields)
+        models[name].schema.pre 'save', nullablesValidation(models[name].schema)
+        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
+        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+
+      callback()
+
+    api.close = (callback) ->
+      connection.close()
+      callback()
+
+
+
+  # ID-validation
+  # =============
   api.isValidId = (id) ->
     try
       ObjectID(id)
@@ -97,34 +123,43 @@ exports.create = ->
 
 
 
-
-
-
-  # Connecting to db
-  # ================
-  api.connect = (databaseUrl, callback) ->
-    connection = mongoose.createConnection databaseUrl
-
-    toDef.forEach ([name, v]) ->
-      models[name] = makeModel name, v.fields
-      models[name].schema.pre 'save', nullablesValidation(models[name].schema)
-      models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
-      models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
-
-    callback()
-
-
-  api.close = (callback) ->
-    connection.close()
-    callback()
-
-
   # The five base methods
   # =====================
+  api.post = (model, indata, callback) ->
+
+    saveFunc = (data) ->
+      new models[model](data).save (err) ->
+        if err && err.code == 11000
+          fieldMatch = err.err.match(/\$([a-zA-Z]+)_1/)
+          valueMatch = err.err.match(/"([a-zA-Z]+)"/)
+          if fieldMatch && valueMatch
+            callback(new Error("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}"))
+          else
+            callback(new Error("Unique constraint violated"))
+        else
+          massaged(callback).apply(this, arguments)
+
+
+    ownersRaw = getMeta(model).owners
+    owners = _(ownersRaw).pluck('plur')
+    ownersOwners = _.flatten owners.map (x) -> getMeta(x).owners
+
+    if ownersOwners.length == 0
+      saveFunc indata
+    else
+      # Should get all the owners and not just the first.
+      # At the moment Im only working with single owners though, so it's for for now...
+      api.getOne owners[0], { filter: { id: indata[ownersRaw[0].sing] } }, (err, ownerdata) ->
+        paths = models[owners[0]].schema.paths
+        metaFields = Object.keys(paths).filter (key) -> !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
+        metaFields.forEach (key) ->
+          indata[key] = ownerdata[key]
+        saveFunc indata
+
   api.list = (model, filter, callback) ->
     filter = preprocFilter(filter)
 
-    defaultSort = api.getMeta(model).defaultSort
+    defaultSort = getMeta(model).defaultSort
 
     rr = models[model].find(filter)
     if defaultSort?
@@ -161,8 +196,6 @@ exports.create = ->
         d.remove (err) ->
           callback err, if !err then massage(d)
 
-
-
   api.putOne = (modelName, data, filter, callback) ->
     filter = preprocFilter(filter)
 
@@ -190,51 +223,11 @@ exports.create = ->
 
 
 
-
-  # Sub-methods
-  # ===========
-  api.post = (model, indata, callback) ->
-
-    saveFunc = (data) ->
-      new models[model](data).save (err) ->
-        if err && err.code == 11000
-          fieldMatch = err.err.match(/\$([a-zA-Z]+)_1/)
-          valueMatch = err.err.match(/"([a-zA-Z]+)"/)
-          if fieldMatch && valueMatch
-            callback(new Error("Duplicate value '#{valueMatch[1]}' for #{fieldMatch[1]}"))
-          else
-            callback(new Error("Unique constraint violated"))
-        else
-          massaged(callback).apply(this, arguments)
-
-
-    getOwners = (m) -> api.getMeta(m).owners
-
-    ownersRaw = getOwners(model)
-    owners = _(ownersRaw).pluck('plur')
-    ownersOwners = _(owners.map (x) -> getOwners(x)).flatten()
-
-    if ownersOwners.length == 0
-      saveFunc indata
-    else
-      # Should get all the owners and not just the first.
-      # At the moment Im only working with single owners though, so it's for for now...
-      api.getOne owners[0], { filter: { id: indata[ownersRaw[0].sing] } }, (err, ownerdata) ->
-        paths = models[owners[0]].schema.paths
-        metaFields = Object.keys(paths).filter (key) -> !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
-        metaFields.forEach (key) ->
-          indata[key] = ownerdata[key]
-        saveFunc indata
-
-
-
-
-
   # The many-to-many methods
   # ========================
   api.delMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
-    mm = api.getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
+    mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
     if mm == null
       callback(new Error('Invalid manyToMany-property'))
@@ -269,7 +262,7 @@ exports.create = ->
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
-    mm = api.getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
+    mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
     if mm == null
       callback(new Error('Invalid manyToMany-property'))
@@ -412,7 +405,7 @@ exports.create = ->
 
   toDef = []
 
-  api.getMeta = (modelName) -> tools.getMeta(specmodels)[modelName]
+  api.getMeta = getMeta
   api.getModels = -> specmodels
 
 
@@ -458,7 +451,7 @@ exports.create = ->
 
 
   preRemoveCascadeNonNullable = (owner, id, next) ->
-    manys = api.getMeta(owner.modelName).manyToMany
+    manys = getMeta(owner.modelName).manyToMany
 
     async.forEach manys, (many, callback) ->
       obj = _.object([[many.inverseName, id]])
@@ -467,7 +460,7 @@ exports.create = ->
 
       # what to do on error?
 
-      flattenedModels = api.getMeta(owner.modelName).owns
+      flattenedModels = getMeta(owner.modelName).owns
 
       async.forEach flattenedModels, (mod, callback) ->
         internalListSub mod.name, mod.field, id, (err, data) ->

@@ -13,15 +13,15 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
   it "should have the right methods", ->
     api = manikin.create()
     api.should.have.keys [
-      # definition
+      # definition  --  this should be removed and passed in as a parameter to `connect`
       'defModels'
 
-      # meta-methods
+      # meta-methods  --  both of these should be accessed from a separate library
       'getModels'
       'getMeta'
 
       # support-methods
-      'isValidId'
+      'isValidId'   # -- this one should not exist at all. make sure `rester` runs without it though
       'connect'
       'close'
 
