@@ -1,7 +1,7 @@
 {
   "name": "manikin-mongodb",
   "description": "Data model abstractions for MongoDB",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "main": "./lib/manikin.js",
   "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
   "engines": {
@@ -12,16 +12,17 @@
     "pretest": "coffee -c -o lib src",
     "prepublish": "coffee -c -o lib src",
     "test": "mocha -r should --compilers coffee:coffee-script spec/*.coffee",
-    "coverage": "sh scripts/coverage.sh spec/mocha.js all.html",
+    "coverage": "sh scripts/coverage.sh manikin-mongo.js mongo.html && sh scripts/coverage.sh manikin-tools.js tools.html",
     "prestart": "coffee -c -o lib src"
   },
   "dependencies": {
     "mongoose": "3.3.1",
-    "mongojs": "0.4.5",
     "underscore": "1.4.2",
     "async": "0.1.22"
   },
   "devDependencies": {
+    "mongojs": "0.4.5",
+    "mocha": "1.7.3",
     "coffee-script": "1.4.0",
     "should": "1.1.0"
   }
