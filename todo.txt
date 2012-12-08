@@ -8,8 +8,4 @@ så länge ingen av modellerna är underordnade varandra (direkt eller indirekt)
 
 The kinds of tests that have been written for sally should be applied directly to this layer
 
-Get rid of "mongojs"
-
-The code is becoming a mess; do some refactoring
-
-Måste ju testa lite "hasOne". Helt sjukt att släppa koden utan det.
+Bli av med alla x-owner och x-indirect-owner i mongoose-datan - Den infon borde hämtas från meta istället!
