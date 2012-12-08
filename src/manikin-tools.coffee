@@ -113,9 +113,5 @@ exports.getMeta = (specmodels) ->
   Object.keys(meta).forEach (metaName) ->
     meta[metaName].owns = _.flatten(Object.keys(meta).map (mn) -> meta[mn].owners.filter((x) -> x.plur == metaName).map (x) -> { name: mn, field: x.sing })
 
-  Object.keys(specmodels).forEach (name) ->
-    meta[name] = meta[name] || {}
-    meta[name].defaultSort = specmodels[name].defaultSort || null
-
   meta
 

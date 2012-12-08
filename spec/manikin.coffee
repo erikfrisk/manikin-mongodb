@@ -198,14 +198,12 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     ]
 
     api.getMeta('companies').should.eql
-      defaultSort: null
       owners: [{ plur: 'accounts', sing: 'account' }]
       owns: []
       fields: meta
       manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
 
     api.getMeta('accounts').should.eql
-      defaultSort: null
       owners: []
       owns: [{ name: 'companies', field: 'account' }]
       manyToMany: []
@@ -222,7 +220,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       ]
 
     api.getMeta('customers').should.eql
-      defaultSort: null
       owners: []
       owns: []
       fields: [

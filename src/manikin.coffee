@@ -159,7 +159,7 @@ exports.create = ->
   api.list = (model, filter, callback) ->
     filter = preprocFilter(filter)
 
-    defaultSort = getMeta(model).defaultSort
+    defaultSort = specmodels[model].defaultSort
 
     rr = models[model].find(filter)
     if defaultSort?
