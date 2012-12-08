@@ -471,6 +471,11 @@ exports.create = ->
     toDef.forEach ([name, conf]) ->
       f2(name, conf)
 
+    toDef.forEach ([name, conf]) ->
+      meta[name] = meta[name] || {}
+      meta[name].defaultSort = conf.defaultSort
+
+
 
   f1 = (name, conf) ->
     spec = conf.fields
@@ -516,11 +521,7 @@ exports.create = ->
   toDef = []
 
   defModel = (name, conf) ->
-
-    meta[name] = { defaultSort: conf.defaultSort }
-
     models[name] = makeModel name, conf.fields
-
     models[name].schema.pre 'save', nullablesValidation(models[name].schema)
     models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
     models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
