@@ -78,7 +78,10 @@ exports.create = ->
     connection = mongoose.createConnection databaseUrl
 
     toDef.forEach ([name, v]) ->
-      defModel name, v
+      models[name] = makeModel name, v.fields
+      models[name].schema.pre 'save', nullablesValidation(models[name].schema)
+      models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
+      models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
 
     callback()
 
@@ -520,13 +523,6 @@ exports.create = ->
 
   toDef = []
 
-  defModel = (name, conf) ->
-    models[name] = makeModel name, conf.fields
-    models[name].schema.pre 'save', nullablesValidation(models[name].schema)
-    models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
-    models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
-
-
 
 
   getMetaFields = (modelName) ->
@@ -572,10 +568,10 @@ exports.create = ->
     manyToMany
 
   api.getMeta = (modelName) ->
-    fields: meta[modelName].fields # getMetaFields(modelName)
-    owns: meta[modelName].owns #getOwnedModels(modelName)
-    owners: meta[modelName].owners # getOwners(modelName)
-    manyToMany: meta[modelName].manyToMany #getManyToMany(modelName)
+    fields: meta[modelName].fields
+    owns: meta[modelName].owns
+    owners: meta[modelName].owners
+    manyToMany: meta[modelName].manyToMany
 
   api.getModels = -> specmodels
 
