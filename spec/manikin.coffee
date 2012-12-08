@@ -14,7 +14,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     api = manikin.create()
     api.should.have.keys [
       # support-methods
-      'isValidId'   # -- this one should not exist at all. make sure `rester` runs without it though
       'connect'
       'close'
 
@@ -75,18 +74,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       obj
 
     obj
-
-
-
-  it "should recognize valid object ids", ->
-    api = manikin.create()
-    api.isValidId('abc').should.eql false
-
-
-
-  it "should recognize invalid object ids", ->
-    api = manikin.create()
-    api.isValidId('509cf9b1788d6803a1000004').should.eql true
 
 
 

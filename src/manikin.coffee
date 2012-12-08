@@ -269,17 +269,6 @@ exports.create = ->
 
 
 
-  # ID-validation
-  # =============
-  api.isValidId = (id) ->
-    try
-      ObjectID(id)
-      true
-    catch ex
-      false
-
-
-
   # The five base methods
   # =====================
   api.post = (model, indata, callback) ->
