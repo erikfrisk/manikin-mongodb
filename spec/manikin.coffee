@@ -102,12 +102,14 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     api.getModels().should.eql
       surveys:
         owners: {}
+        indirectOwners: {}
         fields:
           birth: { type: 'date', required: false, index: false, unique: false }
           count: { type: 'number', required: false, index: false, unique: true }
       questions:
         owners:
           survey: 'surveys'
+        indirectOwners: {}
         fields:
           name: { type: 'string', required: false, index: false, unique: false }
 
@@ -196,12 +198,14 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     ]
 
     api.getMeta('companies').should.eql
+      defaultSort: null
       owners: [{ plur: 'accounts', sing: 'account' }]
       owns: []
       fields: meta
       manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
 
     api.getMeta('accounts').should.eql
+      defaultSort: null
       owners: []
       owns: [{ name: 'companies', field: 'account' }]
       manyToMany: []
@@ -218,6 +222,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       ]
 
     api.getMeta('customers').should.eql
+      defaultSort: null
       owners: []
       owns: []
       fields: [

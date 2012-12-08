@@ -4,8 +4,77 @@ async = require 'async'
 _ = require 'underscore'
 
 
-desugar = (superspec) -> superspec
-getMeta = (desugaredSpec) -> desugaredSpec
+desugar = (models) ->
+  rest = {}
+
+  Object.keys(models).forEach (modelName) ->
+    spec = {}
+    inspec = models[modelName].fields || {}
+    desugarModel(modelName, spec, inspec, Object.keys(inspec))
+    rest[modelName] = _.extend({}, models[modelName], { fields: spec })
+    if !rest[modelName].owners
+      rest[modelName].owners = {}
+
+  Object.keys(rest).forEach (modelName) ->
+    rest[modelName].indirectOwners = getAllIndirectOwners(rest, modelName)
+
+  rest
+
+
+getMeta = (specmodels) ->
+  meta = {}
+
+  Object.keys(specmodels).forEach (modelName) ->
+    meta[modelName] = meta[modelName] || {}
+    meta[modelName].owners = _.pairs(specmodels[modelName].owners).map ([sing, plur]) -> { sing: sing, plur: plur }
+
+    meta[modelName].fields = [
+      name: 'id'
+      readonly: true
+      required: false
+      type: 'string'
+    ]
+
+    meta[modelName].fields = meta[modelName].fields.concat _.pairs(specmodels[modelName].fields).filter(([k, v]) -> v.type != 'hasMany').map ([k, v]) -> {
+      name: k
+      readonly: k == '_id'
+      required: !!v.require
+      type: v.type
+    }
+
+    meta[modelName].fields = meta[modelName].fields.concat _.pairs(specmodels[modelName].owners).map ([k, v]) ->
+      name: k
+      readonly: true
+      required: true
+      type: 'string'
+
+    meta[modelName].fields = meta[modelName].fields.concat _.pairs(specmodels[modelName].indirectOwners).map ([k, v]) ->
+      name: k
+      readonly: true
+      required: true
+      type: 'string'
+
+    meta[modelName].fields = _.sortBy meta[modelName].fields, (x) -> x.name
+
+
+    apa = (modelName) -> _.pairs(specmodels[modelName].fields).filter(([key, value]) -> value.type == 'hasMany')
+    ownMany = apa(modelName).map ([k, v]) -> { ref: v.model, name: k, inverseName: v.inverseName }
+    otherMany = Object.keys(specmodels).map (mn) ->
+      fd = apa(mn).filter ([k, v]) -> v.model == modelName
+      fd.map ([k, v]) -> { ref: mn, name: v.inverseName, inverseName: k }
+    meta[modelName].manyToMany = _.flatten ownMany.concat(otherMany)
+
+  Object.keys(meta).forEach (metaName) ->
+    meta[metaName].owns = _.flatten(Object.keys(meta).map (mn) -> meta[mn].owners.filter((x) -> x.plur == metaName).map (x) -> { name: mn, field: x.sing })
+
+  Object.keys(specmodels).forEach (name) ->
+    meta[name] = meta[name] || {}
+    meta[name].defaultSort = specmodels[name].defaultSort || null
+
+  meta
+
+
+
 
 
 
@@ -137,7 +206,6 @@ exports.create = ->
   api = {}
   models = {}
   specmodels = {}
-  meta = {}
 
   makeModel = (name, schema) ->
     ss = new Schema schema,
@@ -181,9 +249,11 @@ exports.create = ->
   api.list = (model, filter, callback) ->
     filter = preprocFilter(filter)
 
+    defaultSort = api.getMeta(model).defaultSort
+
     rr = models[model].find(filter)
-    if meta[model].defaultSort?
-      rr = rr.sort _.object [[meta[model].defaultSort, 'asc']]
+    if defaultSort?
+      rr = rr.sort _.object [[defaultSort, 'asc']]
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->
@@ -281,19 +351,6 @@ exports.create = ->
           indata[key] = ownerdata[key]
         saveFunc indata
 
-  internalListSub = (model, outer, id, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
-    if filter[outer]? && filter[outer].toString() != id.toString()
-      callback(new Error('No such id'))
-      return
-
-    filter = preprocFilter(filter)
-    finalFilter = _.extend({}, filter, _.object([[outer, id]]))
-
-    models[model].find finalFilter, callback
 
 
 
@@ -436,137 +493,51 @@ exports.create = ->
 
   api.defModels = (models) ->
 
-    rest = {}
-
-    Object.keys(models).forEach (modelName) ->
-      spec = {}
-      inspec = models[modelName].fields || {}
-      desugarModel(modelName, spec, inspec, Object.keys(inspec))
-      rest[modelName] = _.extend({}, models[modelName], { fields: spec })
-      if !rest[modelName].owners
-        rest[modelName].owners = {}
-
-    specmodels = rest
+    specmodels = desugar(models)
 
     newrest = {}
 
     allspec = {}
-    Object.keys(rest).forEach (modelName) ->
+    Object.keys(specmodels).forEach (modelName) ->
       allspec[modelName] = {}
 
-    Object.keys(rest).forEach (modelName) ->
+    Object.keys(specmodels).forEach (modelName) ->
       spec = allspec[modelName]
-      owners = rest[modelName].owners || {}
-      inspec = rest[modelName].fields || {}
+      owners = specmodels[modelName].owners || {}
+      inspec = specmodels[modelName].fields || {}
       specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
-      newrest[modelName] = _.extend({}, rest[modelName], { fields: spec })
-
-    # set all indirect owners
-    Object.keys(newrest).forEach (modelName) ->
-      newrest[modelName].indirectOwners = getAllIndirectOwners(specmodels, modelName)
-
-
-
-    # avsockrad. Kör spec-transform2
+      newrest[modelName] = _.extend({}, specmodels[modelName], { fields: spec })
 
     Object.keys(newrest).forEach (modelName) ->
+      conf = newrest[modelName]
+
+      Object.keys(conf.owners).forEach (ownerName) ->
+        conf.fields[ownerName] =
+          type: ObjectId
+          ref: conf.owners[ownerName]
+          required: true
+          'x-owner': true
+
+      Object.keys(conf.indirectOwners).forEach (p) ->
+        conf.fields[p] =
+          type: ObjectId
+          ref: conf.indirectOwners[p]
+          required: true
+          'x-indirect-owner': true
+
+      Object.keys(conf.fields).forEach (fieldName) ->
+        if conf.fields[fieldName].ref?
+          conf.fields[fieldName].type = ObjectId
+
       toDef.push([modelName, newrest[modelName]])
 
-
-    Object.keys(newrest).forEach (modelName) ->
-      meta[modelName] = meta[modelName] || {}
-      meta[modelName].owners = _.pairs(newrest[modelName].owners).map ([sing, plur]) -> { sing: sing, plur: plur }
-
-      meta[modelName].fields = [
-        name: 'id'
-        readonly: true
-        required: false
-        type: 'string'
-      ]
-
-      meta[modelName].fields = meta[modelName].fields.concat _.pairs(specmodels[modelName].fields).filter(([k, v]) -> v.type != 'hasMany').map ([k, v]) -> {
-        name: k
-        readonly: k == '_id'
-        required: !!v.require
-        type: v.type
-      }
-
-      meta[modelName].fields = meta[modelName].fields.concat _.pairs(newrest[modelName].owners).map ([k, v]) ->
-        name: k
-        readonly: true
-        required: true
-        type: 'string'
-
-      meta[modelName].fields = meta[modelName].fields.concat _.pairs(newrest[modelName].indirectOwners).map ([k, v]) ->
-        name: k
-        readonly: true
-        required: true
-        type: 'string'
-
-      meta[modelName].fields = _.sortBy meta[modelName].fields, (x) -> x.name
-
-
-      apa = (modelName) -> _.pairs(specmodels[modelName].fields).filter(([key, value]) -> value.type == 'hasMany')
-      ownMany = apa(modelName).map ([k, v]) -> { ref: v.model, name: k, inverseName: v.inverseName }
-      otherMany = Object.keys(specmodels).map (mn) ->
-        fd = apa(mn).filter ([k, v]) -> v.model == modelName
-        fd.map ([k, v]) -> { ref: mn, name: v.inverseName, inverseName: k }
-      meta[modelName].manyToMany = _.flatten ownMany.concat(otherMany)
-
-    Object.keys(meta).forEach (metaName) ->
-      meta[metaName].owns = _.flatten(Object.keys(meta).map (mn) -> meta[mn].owners.filter((x) -> x.plur == metaName).map (x) -> { name: mn, field: x.sing })
-
-    toDef.forEach ([name, conf]) ->
-      f1(name, conf)
-
-    toDef.forEach ([name, conf]) ->
-      f2(name, conf)
-
-    toDef.forEach ([name, conf]) ->
-      meta[name] = meta[name] || {}
-      meta[name].defaultSort = conf.defaultSort
-
-
-
-  f1 = (name, conf) ->
-    spec = conf.fields
-    owners = conf.owners
-
-    # set owners
-    Object.keys(owners).forEach (ownerName) ->
-      spec[ownerName] =
-        type: ObjectId
-        ref: owners[ownerName]
-        required: true
-        'x-owner': true
-
-
-  f2 = (name, conf) ->
-    spec = conf.fields
-    owners = conf.owners
-
-    Object.keys(conf.indirectOwners).forEach (p) ->
-      spec[p] =
-        type: ObjectId
-        ref: conf.indirectOwners[p]
-        required: true
-        'x-indirect-owner': true
-
-    Object.keys(spec).forEach (fieldName) ->
-      if spec[fieldName].ref?
-        spec[fieldName].type = ObjectId
 
 
 
 
   toDef = []
 
-  api.getMeta = (modelName) ->
-    fields: meta[modelName].fields
-    owns: meta[modelName].owns
-    owners: meta[modelName].owners
-    manyToMany: meta[modelName].manyToMany
-
+  api.getMeta = (modelName) -> getMeta(specmodels)[modelName]
   api.getModels = -> specmodels
 
 
@@ -594,6 +565,22 @@ exports.create = ->
         else
           callback()
     , next
+
+
+  internalListSub = (model, outer, id, filter, callback) ->
+    if !callback?
+      callback = filter
+      filter = {}
+
+    if filter[outer]? && filter[outer].toString() != id.toString()
+      callback(new Error('No such id'))
+      return
+
+    filter = preprocFilter(filter)
+    finalFilter = _.extend({}, filter, _.object([[outer, id]]))
+
+    models[model].find finalFilter, callback
+
 
   preRemoveCascadeNonNullable = (owner, id, next) ->
     manys = api.getMeta(owner.modelName).manyToMany
