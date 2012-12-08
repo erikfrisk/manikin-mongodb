@@ -78,6 +78,7 @@ exports.create = ->
   api = {}
   models = {}
   specmodels = {}
+  metaData = null
 
   # Mongoose- or state-dependent helpers
   # ====================================
@@ -89,7 +90,7 @@ exports.create = ->
 
 
   getMeta = (modelName) ->
-    tools.getMeta(specmodels)[modelName]
+    metaData[modelName]
 
 
 
@@ -238,6 +239,8 @@ exports.create = ->
           conf.fields[fieldName].type = ObjectId
 
       toDef.push([modelName, newrest[modelName]])
+
+    metaData = tools.getMeta(specmodels)
 
     toDef
 
