@@ -203,15 +203,59 @@ exports.create = ->
 
 
 
+  defModels = (models) ->
+
+    specmodels = tools.desugar(models)
+    toDef = []
+    newrest = {}
+
+    allspec = {}
+    Object.keys(specmodels).forEach (modelName) ->
+      allspec[modelName] = {}
+
+    Object.keys(specmodels).forEach (modelName) ->
+      spec = allspec[modelName]
+      owners = specmodels[modelName].owners || {}
+      inspec = specmodels[modelName].fields || {}
+      specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
+      newrest[modelName] = _.extend({}, specmodels[modelName], { fields: spec })
+
+    Object.keys(newrest).forEach (modelName) ->
+      conf = newrest[modelName]
+
+      Object.keys(conf.owners).forEach (ownerName) ->
+        conf.fields[ownerName] =
+          type: ObjectId
+          ref: conf.owners[ownerName]
+          required: true
+          'x-owner': true
+
+      Object.keys(conf.indirectOwners).forEach (p) ->
+        conf.fields[p] =
+          type: ObjectId
+          ref: conf.indirectOwners[p]
+          required: true
+          'x-indirect-owner': true
+
+      Object.keys(conf.fields).forEach (fieldName) ->
+        if conf.fields[fieldName].ref?
+          conf.fields[fieldName].type = ObjectId
+
+      toDef.push([modelName, newrest[modelName]])
+
+    toDef
+
+
+
   # Connecting
   # ==========
   do ->
     connection = null
 
-    api.connect = (databaseUrl, callback) ->
+    api.connect = (databaseUrl, inputModels, callback) ->
       connection = mongoose.createConnection(databaseUrl)
 
-      toDef.forEach ([name, v]) ->
+      defModels(inputModels).forEach ([name, v]) ->
         models[name] = makeModel(connection, name, v.fields)
         models[name].schema.pre 'save', nullablesValidation(models[name].schema)
         models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
@@ -431,6 +475,7 @@ exports.create = ->
         callback(err, { status: (if updated.some((x) -> x) then 'inserted' else 'already inserted') })
 
 
+
   api.getMany = (primaryModel, primaryId, propertyName, callback) ->
     models[primaryModel]
     .findOne({ _id: primaryId })
@@ -440,55 +485,6 @@ exports.create = ->
 
 
 
-
-
-
-
-
-
-
-  api.defModels = (models) ->
-
-    specmodels = tools.desugar(models)
-
-    newrest = {}
-
-    allspec = {}
-    Object.keys(specmodels).forEach (modelName) ->
-      allspec[modelName] = {}
-
-    Object.keys(specmodels).forEach (modelName) ->
-      spec = allspec[modelName]
-      owners = specmodels[modelName].owners || {}
-      inspec = specmodels[modelName].fields || {}
-      specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
-      newrest[modelName] = _.extend({}, specmodels[modelName], { fields: spec })
-
-    Object.keys(newrest).forEach (modelName) ->
-      conf = newrest[modelName]
-
-      Object.keys(conf.owners).forEach (ownerName) ->
-        conf.fields[ownerName] =
-          type: ObjectId
-          ref: conf.owners[ownerName]
-          required: true
-          'x-owner': true
-
-      Object.keys(conf.indirectOwners).forEach (p) ->
-        conf.fields[p] =
-          type: ObjectId
-          ref: conf.indirectOwners[p]
-          required: true
-          'x-indirect-owner': true
-
-      Object.keys(conf.fields).forEach (fieldName) ->
-        if conf.fields[fieldName].ref?
-          conf.fields[fieldName].type = ObjectId
-
-      toDef.push([modelName, newrest[modelName]])
-
-
-
-  toDef = []
-
+  # Return the public API
+  # =====================
   api

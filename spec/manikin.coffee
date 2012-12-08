@@ -13,9 +13,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
   it "should have the right methods", ->
     api = manikin.create()
     api.should.have.keys [
-      # definition  --  this should be removed and passed in as a parameter to `connect`
-      'defModels'
-
       # support-methods
       'isValidId'   # -- this one should not exist at all. make sure `rester` runs without it though
       'connect'
@@ -105,7 +102,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
     it "should be able to connect even if no models have been defined", (done) ->
       api = manikin.create()
-      promise(api).connect connectionString, noErr ->
+      promise(api).connect connectionString, {}, noErr ->
         api.close(done)
 
 
@@ -115,11 +112,11 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       it "stores things for the first test run", (done) ->
         api = manikin.create()
-        api.defModels _.object([[commonModelName,
+        model = _.object([[commonModelName,
           fields:
             v1: 'string'
         ]])
-        promise(api).connect(connectionString, noErr())
+        promise(api).connect(connectionString, model, noErr())
         .post(commonModelName, { v2: '1', v1: '2' }, noErr())
         .list commonModelName, {}, noErr (list) ->
           list.length.should.eql 1
@@ -129,11 +126,11 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       it "stores different things for the second test run", (done) ->
         api = manikin.create()
-        api.defModels _.object([[commonModelName,
+        model = _.object([[commonModelName,
           fields:
             v2: 'string'
         ]])
-        promise(api).connect(connectionString, noErr())
+        promise(api).connect(connectionString, model, noErr())
         .post(commonModelName, { v2: '3', v1: '4' }, noErr())
         .list commonModelName, {}, noErr (list) ->
           list.length.should.eql 1
@@ -146,7 +143,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should allow a basic set of primitive data types to be stored, updated and retrieved", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         stuffz:
           fields:
             v1: 'string'
@@ -160,7 +157,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post('stuffz', { v1: 'jakob', v2: 12.5, v3: '2012-10-15', v4: true, v5: { v6: 'nest', v7: 7 } }, noErr())
       .list 'stuffz', {}, noErr (list) ->
         saved.id = list[0].id
@@ -199,12 +196,12 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should detect when an object id does not exist", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         table:
           fields:
             v1: 'string'
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .getOne 'table', { filter: { id: '123' } }, (err, data) ->
         err.should.eql new Error()
         err.toString().should.eql 'Error: No such id'
@@ -221,14 +218,14 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should allow mixed properties in models definitions", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         stuffs:
           owners: {}
           fields:
             name: { type: 'string' }
             stats: { type: 'mixed' }
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, noErr (survey) ->
           survey.should.have.keys ['id', 'name', 'stats']
           survey.stats.should.have.keys ['s1', 's2']
@@ -239,7 +236,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should allow default sorting orders", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         warez:
           owners: {}
           defaultSort: 'name'
@@ -247,7 +244,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             name: { type: 'string' }
             stats: { type: 'mixed' }
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post('warez', { name: 'jakob', stats: 1 }, noErr())
       .post('warez', { name: 'erik', stats: 2 }, noErr())
       .post('warez', { name: 'julia', stats: 3 }, noErr())
@@ -262,7 +259,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should allow simplified field declarations (specifying type only)", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         leet:
           owners: {}
           fields:
@@ -270,7 +267,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             lastName: { type: 'string' }
             age: 'number'
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         api.post 'leet', { firstName: 'jakob', lastName: 'mattsson', age: 27 }, noErr (survey) ->
           survey.should.have.keys ['id', 'firstName', 'lastName', 'age']
           survey.should.eql { id: survey.id, firstName: 'jakob', lastName: 'mattsson', age: 27 }
@@ -281,7 +278,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should provide some typical http-operations", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         accounts:
           owners: {}
           fields:
@@ -307,7 +304,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post 'accounts', { name: 'n1' }, noErr (a1) ->
         a1.should.have.keys ['name', 'id']
         saved.a1 = a1
@@ -351,7 +348,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should delete many-to-many-relations when objects are deleted", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         petsY:
           fields:
             name: 'string'
@@ -363,7 +360,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .then 'post', -> @('petsY', { name: 'pet1' }, noErr (res) -> saved.pet1 = res)
       .then 'post', -> @('foodsY', { name: 'food1' }, noErr (res) -> saved.food1 = res)
       .then 'postMany', -> @('foodsY', saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
@@ -382,7 +379,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should be possible to query many-to-many-relationships", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         people:
           owners: {}
           fields:
@@ -396,7 +393,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post 'people', { name: 'q1' }, noErr (q1) ->
         saved.q1 = q1
       .post 'people', { name: 'q2' }, noErr (q2) ->
@@ -425,7 +422,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should delete many-to-many-relations even when owners of the related objects are deleted", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         peopleX:
           fields:
             name: 'string'
@@ -443,7 +440,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post 'peopleX', { name: 'p1' }, noErr (res) ->
         saved.person = res
       .then 'post', -> @('petsX', { person: saved.person.id, name: 'pet1' }, noErr (res) -> saved.pet1 = res)
@@ -465,7 +462,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should prevent duplicate many-to-many values, even when data is posted in parallel", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         typeA:
           fields:
             name: 'string'
@@ -478,7 +475,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       saved = {}
       resultStatuses = {}
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         api.post 'typeA', { name: 'a1' }, noErr (a1) ->
           api.post 'typeB', { name: 'b1' }, noErr (b1) ->
             async.forEach [1,2,3], (item, callback) ->
@@ -498,7 +495,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should prevent duplicate many-to-many values, even when data is posted in parallel, to both end-points", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         typeC:
           fields:
             name: 'string'
@@ -511,7 +508,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       saved = {}
       resultStatuses = {}
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         api.post 'typeC', { name: 'c1' }, noErr (c1) ->
           api.post 'typeD', { name: 'd1' }, noErr (d1) ->
             async.forEach [['typeC', c1.id, 'belongsTo2', d1.id], ['typeD', d1.id, 'belongsTo', c1.id]], (item, callback) ->
@@ -532,7 +529,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should not be ok to post without specifiying the owner", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         accounts:
           owners: {}
           fields:
@@ -545,7 +542,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             name: { type: 'string', default: '' }
             orgnr: { type: 'string', default: '' }
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         api.post 'accounts', { name: 'a1' }, noErr (account) ->
           account.should.have.keys ['name', 'id']
           api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
@@ -557,7 +554,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should allow custom validators", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         pizzas:
           owners: {}
           fields:
@@ -575,7 +572,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
         response: null
       ]
 
-      api.connect connectionString, noErr ->
+      api.connect connectionString, model, noErr ->
         async.forEach indata, (d, callback) ->
           api.post 'pizzas', { name: d.name }, (err, res) ->
             if d.response != null
@@ -590,7 +587,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
     it "should introduce redundant references to all ancestors", (done) ->
       api = manikin.create()
 
-      api.defModels
+      model =
         accounts:
           owners: {}
           fields:
@@ -618,7 +615,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
         account.should.have.keys ['name', 'id']
         saved.account = account
@@ -662,7 +659,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
     it "should provide has-one-relations", (done) ->
       api = manikin.create()
-      api.defModels
+      model =
 
         accounts:
           defaultSort: 'name'
@@ -689,7 +686,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
               model: 'devices'
 
       saved = {}
-      promise(api).connect(connectionString, noErr())
+      promise(api).connect(connectionString, model, noErr())
       .post 'accounts', { email: 'some@email.com' }, noErr (account) ->
         saved.account = account
       .then 'post', -> @ 'questions', { name: 'q1', account: saved.account.id }, noErr (question) ->
