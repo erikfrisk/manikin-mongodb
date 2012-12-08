@@ -151,80 +151,80 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
-  # it "should provide an interface for meta data", ->
-  #   api = manikin.create()
-  # 
-  #   api.defModels
-  #     accounts:
-  #       owners: {}
-  #       fields:
-  #         name: { type: 'string', default: '' }
-  # 
-  #     companies:
-  #       owners:
-  #         account: 'accounts'
-  #       fields:
-  #         name: { type: 'string', default: '' }
-  #         orgnr: { type: 'string', default: '' }
-  # 
-  #     customers:
-  #       fields:
-  #         name: { type: 'string' }
-  #         at: { type: 'hasMany', model: 'companies' }
-  # 
-  # 
-  #   meta = [
-  #     name: 'account'
-  #     readonly: true
-  #     required: true
-  #     type: 'string'
-  #   ,
-  #     name: 'id'
-  #     readonly: true
-  #     required: false
-  #     type: 'string'
-  #   ,
-  #     name: 'name'
-  #     readonly: false
-  #     required: false
-  #     type: 'string'
-  #   ,
-  #     name: 'orgnr'
-  #     readonly: false
-  #     required: false
-  #     type: 'string'
-  #   ]
-  # 
-  #   api.getMeta('companies').should.eql
-  #     owners: [{ plur: 'accounts', sing: 'account' }]
-  #     owns: []
-  #     fields: meta
-  #     manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
-  # 
-  #   api.getMeta('accounts').should.eql
-  #     owners: []
-  #     owns: [{ name: 'companies', field: 'account' }]
-  #     manyToMany: []
-  #     fields: [
-  #       name: 'id'
-  #       readonly: true
-  #       required: false
-  #       type: 'string'
-  #     ,
-  #       name: 'name'
-  #       readonly: false
-  #       required: false
-  #       type: 'string'
-  #     ]
-  # 
-  #   api.getMeta('customers').should.eql
-  #     owners: []
-  #     owns: []
-  #     fields: [
-  #       { name: 'id',   readonly: true,  required: false, type: 'string'  }
-  #       { name: 'name', readonly: false, required: false, type: 'string'  }
-  #     ]
-  #     manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]
+  it "should provide an interface for meta data", ->
+    api = manikin.create()
+
+    api.defModels
+      accounts:
+        owners: {}
+        fields:
+          name: { type: 'string', default: '' }
+
+      companies:
+        owners:
+          account: 'accounts'
+        fields:
+          name: { type: 'string', default: '' }
+          orgnr: { type: 'string', default: '' }
+
+      customers:
+        fields:
+          name: { type: 'string' }
+          at: { type: 'hasMany', model: 'companies' }
+
+
+    meta = [
+      name: 'account'
+      readonly: true
+      required: true
+      type: 'string'
+    ,
+      name: 'id'
+      readonly: true
+      required: false
+      type: 'string'
+    ,
+      name: 'name'
+      readonly: false
+      required: false
+      type: 'string'
+    ,
+      name: 'orgnr'
+      readonly: false
+      required: false
+      type: 'string'
+    ]
+
+    api.getMeta('companies').should.eql
+      owners: [{ plur: 'accounts', sing: 'account' }]
+      owns: []
+      fields: meta
+      manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
+
+    api.getMeta('accounts').should.eql
+      owners: []
+      owns: [{ name: 'companies', field: 'account' }]
+      manyToMany: []
+      fields: [
+        name: 'id'
+        readonly: true
+        required: false
+        type: 'string'
+      ,
+        name: 'name'
+        readonly: false
+        required: false
+        type: 'string'
+      ]
+
+    api.getMeta('customers').should.eql
+      owners: []
+      owns: []
+      fields: [
+        { name: 'id',   readonly: true,  required: false, type: 'string'  }
+        { name: 'name', readonly: false, required: false, type: 'string'  }
+      ]
+      manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]
 
 
 
