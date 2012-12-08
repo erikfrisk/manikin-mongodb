@@ -364,7 +364,14 @@ exports.create = ->
       callback(new Error("Invalid fields: " + invalidFields.join(', ')))
       return
 
-    model.findOne filter, propagate callback, (d) ->
+    model.findOne filter, (err, d) ->
+      if err?
+        if err.message == 'Invalid ObjectId'
+          callback(new Error("No such id"))
+        else
+          callback(err)
+        return
+
       if !d?
         callback(new Error("No such id"))
         return
@@ -383,8 +390,8 @@ exports.create = ->
 
     mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
-    if mm == null
-      callback(new Error('Invalid manyToMany-property'))
+    if !mm?
+      callback(new Error('Invalid many-to-many property'))
       return
 
     secondaryModel = mm.ref
@@ -415,11 +422,10 @@ exports.create = ->
   insertOps = []
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
-
     mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
-    if mm == null
-      callback(new Error('Invalid manyToMany-property'))
+    if !mm?
+      callback(new Error('Invalid many-to-many property'))
       return
 
     secondaryModel = mm.ref
@@ -446,14 +452,14 @@ exports.create = ->
       insertOps.push(op)
 
     async.map insertOpNow, (item, callback) ->
-      models[item.primaryModel].findById item.primaryId, callback
+      models[item.primaryModel].findById(item.primaryId, callback)
     , propagate callback, (datas) ->
 
       updated = [false, false]
 
       insertOpNow.forEach (conf, i) ->
-        if -1 == datas[i][conf.propertyName].indexOf conf.secondaryId
-          datas[i][conf.propertyName].push conf.secondaryId
+        if -1 == datas[i][conf.propertyName].indexOf(conf.secondaryId)
+          datas[i][conf.propertyName].push(conf.secondaryId)
           updated[i] = true
 
       async.forEach [0, 1], (index, callback) ->

@@ -513,6 +513,54 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
+    it "should raise an error on posts to invalid many to many-properties", (done) ->
+      api = manikin.create()
+
+      model =
+        typeA:
+          fields:
+            name: 'string'
+
+        typeB:
+          fields:
+            name: 'string'
+            belongsTo: { type: 'hasMany', model: 'typeA' }
+
+      saved = {}
+      api.connect connectionString, model, noErr ->
+        api.post 'typeA', { name: 'a' }, noErr (a) ->
+          api.post 'typeB', { name: 'b' }, noErr (b) ->
+            api.postMany 'typeA', a.id, 'relation-that-does-not-exist', b.id, (err) ->
+              err.should.eql new Error()
+              err.toString().should.eql 'Error: Invalid many-to-many property'
+              api.close(done)
+
+
+
+    it "should raise an error on deletes to invalid many to many-properties", (done) ->
+      api = manikin.create()
+
+      model =
+        typeA:
+          fields:
+            name: 'string'
+
+        typeB:
+          fields:
+            name: 'string'
+            belongsTo: { type: 'hasMany', model: 'typeA' }
+
+      saved = {}
+      api.connect connectionString, model, noErr ->
+        api.post 'typeA', { name: 'a' }, noErr (a) ->
+          api.post 'typeB', { name: 'b' }, noErr (b) ->
+            api.delMany 'typeA', a.id, 'relation-that-does-not-exist', b.id, (err) ->
+              err.should.eql new Error()
+              err.toString().should.eql 'Error: Invalid many-to-many property'
+              api.close(done)
+
+
+
     it "should not be ok to post without specifiying the owner", (done) ->
       api = manikin.create()
 
@@ -534,6 +582,61 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           account.should.have.keys ['name', 'id']
           api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
             should.exist err # expect something more precise...
+            api.close(done)
+
+
+
+    it "should raise an error if a putOne attempts to put non-existing fields", (done) ->
+      api = manikin.create()
+
+      model =
+        accounts:
+          fields:
+            name: { type: 'string', default: '' }
+
+      api.connect connectionString, model, noErr ->
+        api.post 'accounts', { name: 'a1' }, noErr (account) ->
+          api.putOne 'accounts', { name: 'n1', age: 10, desc: 'test' }, { id: account.id }, (err, data) ->
+            err.should.eql new Error()
+            err.toString().should.eql 'Error: Invalid fields: age, desc'
+            api.close(done)
+
+
+
+    it "should raise an error if a putOne attempts to put using an id from another collection", (done) ->
+      api = manikin.create()
+
+      model =
+        accounts:
+          fields:
+            name: { type: 'string', default: '' }
+        other:
+          fields:
+            name: { type: 'string', default: '' }
+
+      api.connect connectionString, model, noErr ->
+        api.post 'other', { name: 'a1' }, noErr (other) ->
+          api.post 'accounts', { name: 'a1' }, noErr (account) ->
+            api.putOne 'accounts', { name: 'n1' }, { id: other.id }, (err, data) ->
+              err.should.eql new Error()
+              err.toString().should.eql 'Error: No such id'
+              api.close(done)
+
+
+
+    it "should raise an error if a putOne attempts to put using an id from another collection", (done) ->
+      api = manikin.create()
+
+      model =
+        accounts:
+          fields:
+            name: { type: 'string', default: '' }
+
+      api.connect connectionString, model, noErr ->
+        api.post 'accounts', { name: 'a1' }, noErr (account) ->
+          api.putOne 'accounts', { name: 'n1' }, { id: 1 }, (err, data) ->
+            err.should.eql new Error()
+            err.toString().should.eql 'Error: No such id'
             api.close(done)
 
 
