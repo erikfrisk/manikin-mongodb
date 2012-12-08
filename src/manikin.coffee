@@ -139,12 +139,15 @@ exports.create = ->
       models[many.ref].update(obj, { $pull: obj }, callback)
     , (err) ->
 
-      # what to do on error?
+      if err
+        throw err # what to do on error?
 
       flattenedModels = getMeta(owner.modelName).owns
 
       async.forEach flattenedModels, (mod, callback) ->
         internalListSub mod.name, mod.field, id, {}, (err, data) ->
+          if err
+            throw err # what to do on error?
           async.forEach data, (item, callback) ->
             item.remove(callback)
           , callback
@@ -163,6 +166,9 @@ exports.create = ->
 
     async.forEach flattenedModels, (mod, callback) ->
       internalListSub mod.name, mod.field, id, {}, (err, data) ->
+        if err
+          throw err # what to do on error
+
         async.forEach data, (item, callback) ->
           item[mod.field] = null
           item.save()
@@ -295,6 +301,9 @@ exports.create = ->
       # Should get all the owners and not just the first.
       # At the moment Im only working with single owners though, so it's for for now...
       api.getOne owners[0], { filter: { id: indata[ownersRaw[0].sing] } }, (err, ownerdata) ->
+        if err
+          throw err # what to do on error?
+
         paths = models[owners[0]].schema.paths
         metaFields = Object.keys(paths).filter (key) -> !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
         metaFields.forEach (key) ->
@@ -454,11 +463,13 @@ exports.create = ->
           callback()
       , (err) ->
 
-        insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
+        if err
+          # how to handle if one of these manages to save, but not the other?
+          # the database will end up in an invalid state! is it possible to do some kind of transaction?
+          # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
+          throw err
 
-        # how to handle if one of these manages to save, but not the other?
-        # the database will end up in an invalid state! is it possible to do some kind of transaction?
-        # simulate such a failure and solve it using two phase commits: http://docs.mongodb.org/manual/tutorial/perform-two-phase-commits
+        insertOps = insertOps.filter (x) -> !_(insertOpNow).contains(x)
 
         callback(err, { status: (if updated.some((x) -> x) then 'inserted' else 'already inserted') })
 
