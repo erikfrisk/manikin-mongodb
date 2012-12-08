@@ -86,7 +86,120 @@ exports.create = ->
     ss.set('versionKey', false)
     connection.model(name, ss, name)
 
-  getMeta = (modelName) -> tools.getMeta(specmodels)[modelName]
+
+
+  getMeta = (modelName) ->
+    tools.getMeta(specmodels)[modelName]
+
+
+
+  nullablesValidation = (schema) -> (next) ->
+
+    self = this
+    paths = schema.paths
+    outers = Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && typeof paths[x].options.ref == 'string' && !paths[x].options['x-owner']).map (x) ->
+      plur: paths[x].options.ref
+      sing: x
+      validation: paths[x].options['x-validation']
+
+    # setting to null is always ok
+    nonNullOuters = outers.filter (x) -> self[x.sing]?
+
+    async.forEach nonNullOuters, (o, callback) ->
+      api.getOne o.plur, { id: self[o.sing] }, (err, data) ->
+        if err || !data
+          callback(new Error("Invalid pointer"))
+        else if o.validation
+          o.validation self, data, (err) ->
+            callback(if err then new Error(err))
+        else
+          callback()
+    , next
+
+
+
+  internalListSub = (model, outer, id, filter, callback) ->
+    if !callback?
+      callback = filter
+      filter = {}
+
+    if filter[outer]? && filter[outer].toString() != id.toString()
+      callback(new Error('No such id'))
+      return
+
+    filter = preprocFilter(filter)
+    finalFilter = _.extend({}, filter, _.object([[outer, id]]))
+
+    models[model].find finalFilter, callback
+
+
+
+  preRemoveCascadeNonNullable = (owner, id, next) ->
+    manys = getMeta(owner.modelName).manyToMany
+
+    async.forEach manys, (many, callback) ->
+      obj = _.object([[many.inverseName, id]])
+      models[many.ref].update obj, { $pull: obj }, callback
+    , (err) ->
+
+      # what to do on error?
+
+      flattenedModels = getMeta(owner.modelName).owns
+
+      async.forEach flattenedModels, (mod, callback) ->
+        internalListSub mod.name, mod.field, id, (err, data) ->
+          async.forEach data, (item, callback) ->
+            item.remove callback
+          , callback
+      , next
+
+
+
+  preRemoveCascadeNullable = (owner, id, next) ->
+    ownedModels = Object.keys(models).map (modelName) ->
+      paths = models[modelName].schema.paths
+      Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && paths[x].options.ref == owner.modelName && !paths[x].options['x-owner']).map (x) ->
+        name: modelName
+        field: x
+
+    flattenedModels = _.flatten ownedModels
+
+    async.forEach flattenedModels, (mod, callback) ->
+      internalListSub mod.name, mod.field, id, (err, data) ->
+        async.forEach data, (item, callback) ->
+          item[mod.field] = null
+          item.save()
+          callback()
+        , callback
+    , next
+
+
+
+  specTransform = (allspec, modelName, tgt, src, keys) ->
+    keys.forEach (key) ->
+      if src[key].type == 'mixed'
+        tgt[key] = { type: Mixed }
+      else if src[key].type == 'nested'
+        tgt[key] = {}
+        specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
+      else if src[key].type == 'string'
+        tgt[key] = _.extend({}, src[key], { type: String })
+
+        if src[key].validate?
+          tgt[key].validate = (value, callback) ->
+            src[key].validate(api, value, callback)
+
+      else if src[key].type == 'number'
+        tgt[key] = _.extend({}, src[key], { type: Number })
+      else if src[key].type == 'date'
+        tgt[key] = _.extend({}, src[key], { type: Date })
+      else if src[key].type == 'boolean'
+        tgt[key] = _.extend({}, src[key], { type: Boolean })
+      else if src[key].type == 'hasOne'
+        tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation }
+      else if src[key].type == 'hasMany'
+        tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName }]
+        allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
 
 
 
@@ -333,31 +446,6 @@ exports.create = ->
 
 
 
-  specTransform = (allspec, modelName, tgt, src, keys) ->
-    keys.forEach (key) ->
-      if src[key].type == 'mixed'
-        tgt[key] = { type: Mixed }
-      else if src[key].type == 'nested'
-        tgt[key] = {}
-        specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
-      else if src[key].type == 'string'
-        tgt[key] = _.extend({}, src[key], { type: String })
-
-        if src[key].validate?
-          tgt[key].validate = (value, callback) ->
-            src[key].validate(api, value, callback)
-
-      else if src[key].type == 'number'
-        tgt[key] = _.extend({}, src[key], { type: Number })
-      else if src[key].type == 'date'
-        tgt[key] = _.extend({}, src[key], { type: Date })
-      else if src[key].type == 'boolean'
-        tgt[key] = _.extend({}, src[key], { type: Boolean })
-      else if src[key].type == 'hasOne'
-        tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation }
-      else if src[key].type == 'hasMany'
-        tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName }]
-        allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
 
   api.defModels = (models) ->
 
@@ -401,92 +489,9 @@ exports.create = ->
 
 
 
-
-
   toDef = []
 
   api.getMeta = getMeta
   api.getModels = -> specmodels
-
-
-
-  # checking that nullable relations are set to values that exist
-  nullablesValidation = (schema) -> (next) ->
-
-    self = this
-    paths = schema.paths
-    outers = Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && typeof paths[x].options.ref == 'string' && !paths[x].options['x-owner']).map (x) ->
-      plur: paths[x].options.ref
-      sing: x
-      validation: paths[x].options['x-validation']
-
-    # setting to null is always ok
-    nonNullOuters = outers.filter (x) -> self[x.sing]?
-
-    async.forEach nonNullOuters, (o, callback) ->
-      api.getOne o.plur, { id: self[o.sing] }, (err, data) ->
-        if err || !data
-          callback(new Error("Invalid pointer"))
-        else if o.validation
-          o.validation self, data, (err) ->
-            callback(if err then new Error(err))
-        else
-          callback()
-    , next
-
-
-  internalListSub = (model, outer, id, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
-    if filter[outer]? && filter[outer].toString() != id.toString()
-      callback(new Error('No such id'))
-      return
-
-    filter = preprocFilter(filter)
-    finalFilter = _.extend({}, filter, _.object([[outer, id]]))
-
-    models[model].find finalFilter, callback
-
-
-  preRemoveCascadeNonNullable = (owner, id, next) ->
-    manys = getMeta(owner.modelName).manyToMany
-
-    async.forEach manys, (many, callback) ->
-      obj = _.object([[many.inverseName, id]])
-      models[many.ref].update obj, { $pull: obj }, callback
-    , (err) ->
-
-      # what to do on error?
-
-      flattenedModels = getMeta(owner.modelName).owns
-
-      async.forEach flattenedModels, (mod, callback) ->
-        internalListSub mod.name, mod.field, id, (err, data) ->
-          async.forEach data, (item, callback) ->
-            item.remove callback
-          , callback
-      , next
-
-
-
-  preRemoveCascadeNullable = (owner, id, next) ->
-    ownedModels = Object.keys(models).map (modelName) ->
-      paths = models[modelName].schema.paths
-      Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && paths[x].options.ref == owner.modelName && !paths[x].options['x-owner']).map (x) ->
-        name: modelName
-        field: x
-
-    flattenedModels = _.flatten ownedModels
-
-    async.forEach flattenedModels, (mod, callback) ->
-      internalListSub mod.name, mod.field, id, (err, data) ->
-        async.forEach data, (item, callback) ->
-          item[mod.field] = null
-          item.save()
-          callback()
-        , callback
-    , next
 
   api
