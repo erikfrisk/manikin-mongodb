@@ -9,11 +9,11 @@
     "node": "0.8.x"
   },
   "scripts": {
-    "pretest": "coffee -c -o lib src",
-    "prepublish": "coffee -c -o lib src",
-    "test": "mocha -r should --compilers coffee:coffee-script spec/*.coffee",
+    "pretest": "coffee -co lib src",
+    "prepublish": "coffee -co lib src",
+    "test": "mocha --compilers coffee:coffee-script spec/*.coffee",
     "coverage": "sh scripts/coverage.sh manikin-mongo.js mongo.html && sh scripts/coverage.sh manikin-tools.js tools.html",
-    "prestart": "coffee -c -o lib src"
+    "prestart": "coffee -co lib src"
   },
   "dependencies": {
     "mongoose": "3.3.1",
