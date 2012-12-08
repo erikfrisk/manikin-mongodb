@@ -10,4 +10,4 @@ dropDatabase = (connStr, done) ->
     collNames = colls.map ({ name }) -> _(name.split('.')).last()
     async.forEach collNames.slice(1), conn.dropCollection, done
 
-require('../spec/manikin').runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
+require('./manikin').runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
