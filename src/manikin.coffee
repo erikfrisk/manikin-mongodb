@@ -3,6 +3,120 @@
 async = require 'async'
 _ = require 'underscore'
 
+
+desugar = (superspec) -> superspec
+getMeta = (desugaredSpec) -> desugaredSpec
+
+
+
+getAllOwners = (specmodels, modelName) ->
+  owners = specmodels[modelName].owners
+  indirect = _.values(owners).map (model) -> getAllOwners(specmodels, model)
+  _.extend {}, owners, indirect...
+
+getAllIndirectOwners = (specmodels, modelName) ->
+  owners = specmodels[modelName].owners
+  indirect = _.flatten _.values(owners).map (model) -> getAllOwners(specmodels, model)
+  _.extend {}, indirect...
+
+
+
+desugarModel = (modelName, tgt, src, keys) ->
+  keys.forEach (key) ->
+    if typeof src[key] == 'string'
+      obj = {}
+      obj[key] = { type: src[key] }
+      desugarModel(modelName, tgt, obj, [key])
+    else if !src[key].type?
+      throw new Error("must assign a type: " + key)
+    else if src[key].type == 'mixed'
+      tgt[key] = { type: 'mixed' }
+    else if src[key].type == 'nested'
+      tgt[key] = { type: 'nested' }
+      desugarModel(modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
+    else if _(['string', 'number', 'date', 'boolean']).contains(src[key].type)
+      tgt[key] =
+        type: src[key].type
+        required: !!src[key].required
+        index: !!src[key].index
+        unique: !!src[key].unique
+      tgt[key].default = src[key].default if src[key].default?
+      tgt[key].validate = src[key].validate if src[key].validate?
+    else if src[key].type == 'hasOne'
+      tgt[key] = src[key]
+    else if src[key].type == 'hasMany'
+      tgt[key] = src[key]
+      tgt[key].inverseName = src[key].inverseName || key
+    else
+      throw new Error("Invalid type: " + src[key].type)
+
+
+preprocFilter = (filter) ->
+  x = _.extend({}, filter)
+  x._id = x.id if x.id
+  delete x.id
+  x
+
+
+massageOne = (x) ->
+  return x if !x?
+  x.id = x._id
+  delete x._id
+  x
+
+
+massageCore = (r2) -> if Array.isArray r2 then r2.map massageOne else massageOne r2
+
+massage = (r2) -> massageCore(JSON.parse(JSON.stringify(r2)))
+
+
+massaged = (f) -> (err, data) ->
+  if err
+    f(err)
+  else
+    f(null, massage(data))
+
+
+
+propagate = (callback, f) ->
+  (err, args...) ->
+    if err
+      callback(err)
+    else
+      f.apply(this, args)
+
+
+getKeys = (data, target = [], prefix = '') ->
+  valids = ['Array', 'String', 'Boolean', 'Date', 'Number', 'Null']
+
+  Object.keys(data).forEach (key) ->
+    if valids.some((x) -> _(data[key])['is' + x]())
+      target.push(prefix + key)
+    else
+      getKeys(data[key], target, prefix + key + '.')
+
+  target
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 exports.create = ->
 
   # Silly hack to make this project testable without caching gotchas
@@ -25,13 +139,6 @@ exports.create = ->
   specmodels = {}
   meta = {}
 
-  propagate = (callback, f) ->
-    (err, args...) ->
-      if err
-        callback(err)
-      else
-        f.apply(this, args)
-
   makeModel = (name, schema) ->
     ss = new Schema schema,
       strict: true
@@ -45,30 +152,8 @@ exports.create = ->
     catch ex
       false
 
-  preprocFilter = (filter) ->
-    x = _.extend({}, filter)
-    x._id = x.id if x.id
-    delete x.id
-    x
 
 
-  massageOne = (x) ->
-    return x if !x?
-    x.id = x._id
-    delete x._id
-    x
-
-
-  massageCore = (r2) -> if Array.isArray r2 then r2.map massageOne else massageOne r2
-
-  massage = (r2) -> massageCore(JSON.parse(JSON.stringify(r2)))
-
-
-  massaged = (f) -> (err, data) ->
-    if err
-      f(err)
-    else
-      f(null, massage(data))
 
 
 
@@ -132,16 +217,6 @@ exports.create = ->
           callback err, if !err then massage(d)
 
 
-  getKeys = (data, target = [], prefix = '') ->
-    valids = ['Array', 'String', 'Boolean', 'Date', 'Number', 'Null']
-
-    Object.keys(data).forEach (key) ->
-      if valids.some((x) -> _(data[key])['is' + x]())
-        target.push(prefix + key)
-      else
-        getKeys(data[key], target, prefix + key + '.')
-
-    target
 
   api.putOne = (modelName, data, filter, callback) ->
     filter = preprocFilter(filter)
@@ -188,6 +263,7 @@ exports.create = ->
           massaged(callback).apply(this, arguments)
 
 
+    getOwners = (m) -> api.getMeta(m).owners
 
     ownersRaw = getOwners(model)
     owners = _(ownersRaw).pluck('plur')
@@ -226,7 +302,7 @@ exports.create = ->
   # ========================
   api.delMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
-    mm = getManyToMany(primaryModel).filter((x) -> x.name == propertyName)[0]
+    mm = api.getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
     if mm == null
       callback(new Error('Invalid manyToMany-property'))
@@ -261,7 +337,7 @@ exports.create = ->
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
 
-    mm = getManyToMany(primaryModel).filter((x) -> x.name == propertyName)[0]
+    mm = api.getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
     if mm == null
       callback(new Error('Invalid manyToMany-property'))
@@ -330,34 +406,6 @@ exports.create = ->
 
 
 
-  desugarModel = (modelName, tgt, src, keys) ->
-    keys.forEach (key) ->
-      if typeof src[key] == 'string'
-        obj = {}
-        obj[key] = { type: src[key] }
-        desugarModel(modelName, tgt, obj, [key])
-      else if !src[key].type?
-        throw new Error("must assign a type: " + key)
-      else if src[key].type == 'mixed'
-        tgt[key] = { type: 'mixed' }
-      else if src[key].type == 'nested'
-        tgt[key] = { type: 'nested' }
-        desugarModel(modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
-      else if _(['string', 'number', 'date', 'boolean']).contains(src[key].type)
-        tgt[key] =
-          type: src[key].type
-          required: !!src[key].required
-          index: !!src[key].index
-          unique: !!src[key].unique
-        tgt[key].default = src[key].default if src[key].default?
-        tgt[key].validate = src[key].validate if src[key].validate?
-      else if src[key].type == 'hasOne'
-        tgt[key] = src[key]
-      else if src[key].type == 'hasMany'
-        tgt[key] = src[key]
-        tgt[key].inverseName = src[key].inverseName || key
-      else
-        throw new Error("Invalid type: " + src[key].type)
 
 
   specTransform = (allspec, modelName, tgt, src, keys) ->
@@ -415,7 +463,7 @@ exports.create = ->
 
     # set all indirect owners
     Object.keys(newrest).forEach (modelName) ->
-      newrest[modelName].indirectOwners = getAllIndirectOwners(modelName)
+      newrest[modelName].indirectOwners = getAllIndirectOwners(specmodels, modelName)
 
 
 
@@ -462,7 +510,7 @@ exports.create = ->
       ownMany = apa(modelName).map ([k, v]) -> { ref: v.model, name: k, inverseName: v.inverseName }
       otherMany = Object.keys(specmodels).map (mn) ->
         fd = apa(mn).filter ([k, v]) -> v.model == modelName
-        fd.map ([k, v]) -> { ref: mn, name: k, inverseName: v.inverseName }
+        fd.map ([k, v]) -> { ref: mn, name: v.inverseName, inverseName: k }
       meta[modelName].manyToMany = _.flatten ownMany.concat(otherMany)
 
     Object.keys(meta).forEach (metaName) ->
@@ -492,16 +540,6 @@ exports.create = ->
         required: true
         'x-owner': true
 
-  getAllOwners = (modelName) ->
-    owners = specmodels[modelName].owners
-    indirect = _.values(owners).map getAllOwners
-    _.extend {}, owners, indirect...
-
-  getAllIndirectOwners = (modelName) ->
-    owners = specmodels[modelName].owners
-    indirect = _.flatten _.values(owners).map getAllOwners
-    _.extend {}, indirect...
-
 
   f2 = (name, conf) ->
     spec = conf.fields
@@ -522,50 +560,6 @@ exports.create = ->
 
 
   toDef = []
-
-
-
-  getMetaFields = (modelName) ->
-    typeMap =
-      ObjectID: 'string'
-      String: 'string'
-      Number: 'number'
-      Boolean: 'boolean'
-      Date: 'date'
-    paths = models[modelName].schema.paths
-
-    typeFunc = (x) ->
-      return 'boolean' if x == Boolean
-      return 'date' if x == Date
-
-    metaFields = Object.keys(paths).filter((key) -> !Array.isArray(paths[key].options.type)).map (key) ->
-      name: (if key == '_id' then 'id' else key)
-      readonly: key == '_id' || !!paths[key].options['x-owner'] || !!paths[key].options['x-indirect-owner']
-      required: !!paths[key].options.required
-      type: typeMap[paths[key].instance] || typeFunc(paths[key].options.type) || 'unknown'
-    _.sortBy(metaFields, 'name')
-
-  getOwners = (modelName) ->
-    paths = models[modelName].schema.paths
-    outers = Object.keys(paths).filter((x) -> paths[x].options['x-owner']).map (x) ->
-      plur: paths[x].options.ref
-      sing: x
-    outers
-
-  getOwnedModels = (ownerModelName) ->
-    _.flatten Object.keys(models).map (modelName) ->
-      paths = models[modelName].schema.paths
-      Object.keys(paths).filter((x) -> paths[x].options.type == ObjectId && paths[x].options.ref == ownerModelName && paths[x].options['x-owner']).map (x) ->
-        name: modelName
-        field: x
-
-  getManyToMany = (modelName) ->
-    paths = models[modelName].schema.paths
-    manyToMany = Object.keys(paths).filter((x) -> Array.isArray paths[x].options.type).map (x) ->
-      inverseName: paths[x].options.type[0].inverseName
-      ref: paths[x].options.type[0].ref
-      name: x
-    manyToMany
 
   api.getMeta = (modelName) ->
     fields: meta[modelName].fields
@@ -602,7 +596,7 @@ exports.create = ->
     , next
 
   preRemoveCascadeNonNullable = (owner, id, next) ->
-    manys = getManyToMany(owner.modelName)
+    manys = api.getMeta(owner.modelName).manyToMany
 
     async.forEach manys, (many, callback) ->
       obj = _.object([[many.inverseName, id]])
@@ -611,7 +605,7 @@ exports.create = ->
 
       # what to do on error?
 
-      flattenedModels = getOwnedModels(owner.modelName)
+      flattenedModels = api.getMeta(owner.modelName).owns
 
       async.forEach flattenedModels, (mod, callback) ->
         internalListSub mod.name, mod.field, id, (err, data) ->
