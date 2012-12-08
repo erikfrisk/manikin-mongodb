@@ -23,7 +23,7 @@ massageOne = (x) ->
   x
 
 
-massageCore = (r2) -> if Array.isArray r2 then r2.map(massageOne) else massageOne(r2)
+massageCore = (r2) -> if Array.isArray(r2) then r2.map(massageOne) else massageOne(r2)
 
 
 massage = (r2) -> massageCore(JSON.parse(JSON.stringify(r2)))
@@ -119,10 +119,6 @@ exports.create = ->
 
 
   internalListSub = (model, outer, id, filter, callback) ->
-    if !callback?
-      callback = filter
-      filter = {}
-
     if filter[outer]? && filter[outer].toString() != id.toString()
       callback(new Error('No such id'))
       return
@@ -130,7 +126,7 @@ exports.create = ->
     filter = preprocFilter(filter)
     finalFilter = _.extend({}, filter, _.object([[outer, id]]))
 
-    models[model].find finalFilter, callback
+    models[model].find(finalFilter, callback)
 
 
 
@@ -139,7 +135,7 @@ exports.create = ->
 
     async.forEach manys, (many, callback) ->
       obj = _.object([[many.inverseName, id]])
-      models[many.ref].update obj, { $pull: obj }, callback
+      models[many.ref].update(obj, { $pull: obj }, callback)
     , (err) ->
 
       # what to do on error?
@@ -147,9 +143,9 @@ exports.create = ->
       flattenedModels = getMeta(owner.modelName).owns
 
       async.forEach flattenedModels, (mod, callback) ->
-        internalListSub mod.name, mod.field, id, (err, data) ->
+        internalListSub mod.name, mod.field, id, {}, (err, data) ->
           async.forEach data, (item, callback) ->
-            item.remove callback
+            item.remove(callback)
           , callback
       , next
 
@@ -165,7 +161,7 @@ exports.create = ->
     flattenedModels = _.flatten ownedModels
 
     async.forEach flattenedModels, (mod, callback) ->
-      internalListSub mod.name, mod.field, id, (err, data) ->
+      internalListSub mod.name, mod.field, id, {}, (err, data) ->
         async.forEach data, (item, callback) ->
           item[mod.field] = null
           item.save()
