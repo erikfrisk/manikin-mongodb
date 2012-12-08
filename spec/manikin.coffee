@@ -16,10 +16,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       # definition  --  this should be removed and passed in as a parameter to `connect`
       'defModels'
 
-      # meta-methods  --  both of these should be accessed from a separate library
-      'getModels'
-      'getMeta'
-
       # support-methods
       'isValidId'   # -- this one should not exist at all. make sure `rester` runs without it though
       'connect'
@@ -85,50 +81,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
-  it "should allow model definitions in bulk", ->
-    api = manikin.create()
-
-    api.defModels
-      surveys:
-        fields:
-          birth: 'date'
-          count: { type: 'number', unique: true }
-      questions:
-        owners:
-          survey: 'surveys'
-        fields:
-          name: 'string'
-
-    api.getModels().should.eql
-      surveys:
-        owners: {}
-        indirectOwners: {}
-        fields:
-          birth: { type: 'date', required: false, index: false, unique: false }
-          count: { type: 'number', required: false, index: false, unique: true }
-      questions:
-        owners:
-          survey: 'surveys'
-        indirectOwners: {}
-        fields:
-          name: { type: 'string', required: false, index: false, unique: false }
-
-
-
-  it "should fail if a field is missing its type", ->
-    api = manikin.create()
-
-    (->
-      api.defModels
-        some_model:
-          fields:
-            name: { unique: true }
-            age: { type: 'string', unique: true }
-            whatever: { unique: true }
-    ).should.throw('must assign a type: name')
-
-
-
   it "should recognize valid object ids", ->
     api = manikin.create()
     api.isValidId('abc').should.eql false
@@ -138,95 +90,6 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
   it "should recognize invalid object ids", ->
     api = manikin.create()
     api.isValidId('509cf9b1788d6803a1000004').should.eql true
-
-
-
-  it "should throw exceptions for invalid types", ->
-    api = manikin.create()
-
-    (->
-      api.defModels
-        some_model:
-          fields:
-            name: 'an-invalid-type'
-    ).should.throw('Invalid type: an-invalid-type')
-
-
-
-  it "should provide an interface for meta data", ->
-    api = manikin.create()
-
-    api.defModels
-      accounts:
-        owners: {}
-        fields:
-          name: { type: 'string', default: '' }
-
-      companies:
-        owners:
-          account: 'accounts'
-        fields:
-          name: { type: 'string', default: '' }
-          orgnr: { type: 'string', default: '' }
-
-      customers:
-        fields:
-          name: { type: 'string' }
-          at: { type: 'hasMany', model: 'companies' }
-
-
-    meta = [
-      name: 'account'
-      readonly: true
-      required: true
-      type: 'string'
-    ,
-      name: 'id'
-      readonly: true
-      required: false
-      type: 'string'
-    ,
-      name: 'name'
-      readonly: false
-      required: false
-      type: 'string'
-    ,
-      name: 'orgnr'
-      readonly: false
-      required: false
-      type: 'string'
-    ]
-
-    api.getMeta('companies').should.eql
-      owners: [{ plur: 'accounts', sing: 'account' }]
-      owns: []
-      fields: meta
-      manyToMany: [{ ref: 'customers', name: 'at', inverseName: 'at' }]
-
-    api.getMeta('accounts').should.eql
-      owners: []
-      owns: [{ name: 'companies', field: 'account' }]
-      manyToMany: []
-      fields: [
-        name: 'id'
-        readonly: true
-        required: false
-        type: 'string'
-      ,
-        name: 'name'
-        readonly: false
-        required: false
-        type: 'string'
-      ]
-
-    api.getMeta('customers').should.eql
-      owners: []
-      owns: []
-      fields: [
-        { name: 'id',   readonly: true,  required: false, type: 'string'  }
-        { name: 'name', readonly: false, required: false, type: 'string'  }
-      ]
-      manyToMany: [{ ref: 'companies', name: 'at', inverseName: 'at' }]
 
 
 

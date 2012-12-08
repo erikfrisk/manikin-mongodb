@@ -491,7 +491,4 @@ exports.create = ->
 
   toDef = []
 
-  api.getMeta = getMeta
-  api.getModels = -> specmodels
-
   api
