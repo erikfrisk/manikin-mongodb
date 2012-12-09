@@ -1,11 +1,14 @@
-testa med och utan inverseName på many-to-many-relationer
-
-skriv också något som gör att relationen baseras på modellernas namn och inte har ett eget.
-så länge ingen av modellerna är underordnade varandra (direkt eller indirekt) så funkar detta
-(men dessutom bara en gång per modell-par, givetvis)
+Test with and without inverseName on many-to-many relations.
 
 100% coverage
 
-The kinds of tests that have been written for sally should be applied directly to this layer
+The kinds of tests that have been written for sally should be applied directly to this layer.
 
-Bli av med alla x-owner och x-indirect-owner i mongoose-datan - Den infon borde hämtas från meta istället!
+Get rid of all x-owner and x-indirect-owner in the mongoose data - that information should be fetched from meta instead!
+
+All operations that can leave the data in an invalid state should use two-phase commits and be tested for that.
+
+There are at least three features that have not been tested:
+* Validation in "nullablesValidation"
+* Cascade in "preRemoveCascadeNullable" (should work by removing as hasOne indrectly, by deleteing an owner for example)
+* Uniques
