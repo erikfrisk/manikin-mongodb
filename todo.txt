@@ -8,7 +8,8 @@ Get rid of all x-owner and x-indirect-owner in the mongoose data - that informat
 
 All operations that can leave the data in an invalid state should use two-phase commits and be tested for that.
 
-There are at least three features that have not been tested:
+There are at least a couple of features that have not been tested:
 * Validation in "nullablesValidation"
 * Cascade in "preRemoveCascadeNullable" (should work by removing as hasOne indrectly, by deleteing an owner for example)
 * Uniques
+* Require
