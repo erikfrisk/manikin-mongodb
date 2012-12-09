@@ -60,13 +60,13 @@ getKeys = (data, target = [], prefix = '') ->
 # Manikin constructor
 # =============================================================================
 
-exports.create = ->
+exports.create = (injectedMongoose)->
 
   # Silly hack to make this project testable without caching gotchas
   if process.env.NODE_ENV != 'production'
     for key of require.cache
       delete require.cache[key]
-  mongoose = require 'mongoose'
+  mongoose = injectedMongoose || require 'mongoose'
 
 
   # Shorthands for some moongoose types
