@@ -637,6 +637,26 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
 
 
+    it "should raise an error if a unique-constraint is violated", (done) ->
+      api = manikin.create()
+
+      model =
+        uniqees:
+          fields:
+            name: { type: 'string', default: '' }
+            num: { type: 'number', unique: true, index: true, required: true }
+
+      api.connect connectionString, model, noErr ->
+        api.post 'uniqees', { name: 'a1', num: 2 }, noErr (a1) ->
+          api.post 'uniqees', { name: 'a1', num: 3 }, noErr (a2) ->
+            api.post 'uniqees', { name: 'a1', num: 2 }, (err, a3) ->
+              # console.log "err", err, a3
+              err.should.eql new Error()
+              err.toString().should.eql 'invalid'
+              api.close(done)
+
+
+
     it "should raise an error if a putOne attempts to put using an id from another collection", (done) ->
       api = manikin.create()
 

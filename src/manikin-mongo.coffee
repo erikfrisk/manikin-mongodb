@@ -5,6 +5,8 @@ _ = require 'underscore'
 tools = require './manikin-tools'
 
 
+inspect = -> console.log require('util').inspect arguments, null, 100
+
 
 # Pure helper functions
 # =============================================================================
@@ -202,6 +204,8 @@ exports.create = ->
   defModels = (models) ->
 
     specmodels = tools.desugar(models)
+
+    inspect specmodels
     toDef = []
     newrest = {}
 
@@ -215,6 +219,8 @@ exports.create = ->
       inspec = specmodels[modelName].fields || {}
       specTransform(allspec, modelName, spec, inspec, Object.keys(inspec))
       newrest[modelName] = _.extend({}, specmodels[modelName], { fields: spec })
+
+    inspect newrest
 
     Object.keys(newrest).forEach (modelName) ->
       conf = newrest[modelName]
@@ -291,6 +297,8 @@ exports.create = ->
     ownersRaw = getMeta(model).owners
     owners = _(ownersRaw).pluck('plur')
     ownersOwners = _.flatten owners.map (x) -> getMeta(x).owners
+
+    inspect "SCHEMA", models[model].schema
 
     if ownersOwners.length == 0
       saveFunc indata
