@@ -94,6 +94,15 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
 
 
+    it "should raise an error if an invalid connection string is given", (done) ->
+      api = manikin.create()
+      api.connect "invalid-connection-string", {}, (err) ->
+        err.should.eql new Error()
+        err.toString().should.match /^Error:/
+        done()
+
+
+
     describe 'should not save configuration between test runs', ->
       commonModelName = 'stuffzz'
 

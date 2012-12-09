@@ -251,13 +251,17 @@ exports.create = ->
     connection = null
 
     api.connect = (databaseUrl, inputModels, callback) ->
-      connection = mongoose.createConnection(databaseUrl)
+      try
+        connection = mongoose.createConnection(databaseUrl)
 
-      defModels(inputModels).forEach ([name, v]) ->
-        models[name] = makeModel(connection, name, v.fields)
-        models[name].schema.pre 'save', nullablesValidation(models[name].schema)
-        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
-        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+        defModels(inputModels).forEach ([name, v]) ->
+          models[name] = makeModel(connection, name, v.fields)
+          models[name].schema.pre 'save', nullablesValidation(models[name].schema)
+          models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
+          models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+      catch ex
+        callback(ex)
+        return
 
       callback()
 
