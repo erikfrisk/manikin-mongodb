@@ -11,6 +11,10 @@ noErr = (cb) ->
 exports.runTests = (manikin, dropDatabase, connectionString) ->
 
   it "should have the right methods", ->
+    manikin.should.have.keys [
+      'create'
+    ]
+
     api = manikin.create()
     api.should.have.keys [
       # support-methods
