@@ -8,7 +8,7 @@ noErr = (cb) ->
     should.not.exist err
     cb(args...) if cb
 
-exports.runTests = (manikin, dropDatabase, connectionString) ->
+exports.runTests = (manikin, dropDatabase, connectionData) ->
 
   it "should have the right methods", ->
     manikin.should.have.keys [
@@ -84,16 +84,16 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
   describe 'Manikin', ->
 
     beforeEach (done) ->
-      dropDatabase(connectionString, done)
+      dropDatabase(connectionData, done)
 
     after (done) ->
-      dropDatabase(connectionString, done)
+      dropDatabase(connectionData, done)
 
 
 
     it "should be able to connect even if no models have been defined", (done) ->
       api = manikin.create()
-      promise(api).connect connectionString, {}, noErr ->
+      promise(api).connect connectionData, {}, noErr ->
         api.close(done)
 
 
@@ -116,7 +116,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             v1: 'string'
         ]])
-        promise(api).connect(connectionString, model, noErr())
+        promise(api).connect(connectionData, model, noErr())
         .post(commonModelName, { v2: '1', v1: '2' }, noErr())
         .list commonModelName, {}, noErr (list) ->
           list.length.should.eql 1
@@ -130,7 +130,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             v2: 'string'
         ]])
-        promise(api).connect(connectionString, model, noErr())
+        promise(api).connect(connectionData, model, noErr())
         .post(commonModelName, { v2: '3', v1: '4' }, noErr())
         .list commonModelName, {}, noErr (list) ->
           list.length.should.eql 1
@@ -157,7 +157,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post('stuffz', { v1: 'jakob', v2: 12.5, v3: '2012-10-15', v4: true, v5: { v6: 'nest', v7: 7 } }, noErr())
       .list 'stuffz', {}, noErr (list) ->
         saved.id = list[0].id
@@ -201,7 +201,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             v1: 'string'
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .getOne 'table', { filter: { id: '123' } }, (err, data) ->
         err.should.eql new Error()
         err.toString().should.eql 'Error: No such id'
@@ -225,7 +225,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             name: { type: 'string' }
             stats: { type: 'mixed' }
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, noErr (survey) ->
           survey.should.have.keys ['id', 'name', 'stats']
           survey.stats.should.have.keys ['s1', 's2']
@@ -244,7 +244,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             name: { type: 'string' }
             stats: { type: 'mixed' }
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post('warez', { name: 'jakob', stats: 1 }, noErr())
       .post('warez', { name: 'erik', stats: 2 }, noErr())
       .post('warez', { name: 'julia', stats: 3 }, noErr())
@@ -267,7 +267,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             lastName: { type: 'string' }
             age: 'number'
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'leet', { firstName: 'jakob', lastName: 'mattsson', age: 27 }, noErr (survey) ->
           survey.should.have.keys ['id', 'firstName', 'lastName', 'age']
           survey.should.eql { id: survey.id, firstName: 'jakob', lastName: 'mattsson', age: 27 }
@@ -304,7 +304,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post 'accounts', { name: 'n1' }, noErr (a1) ->
         a1.should.have.keys ['name', 'id']
         saved.a1 = a1
@@ -360,7 +360,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .then 'post', -> @('petsY', { name: 'pet1' }, noErr (res) -> saved.pet1 = res)
       .then 'post', -> @('foodsY', { name: 'food1' }, noErr (res) -> saved.food1 = res)
       .then 'postMany', -> @('foodsY', saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
@@ -393,7 +393,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post 'people', { name: 'q1' }, noErr (q1) ->
         saved.q1 = q1
       .post 'people', { name: 'q2' }, noErr (q2) ->
@@ -440,7 +440,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post 'peopleX', { name: 'p1' }, noErr (res) ->
         saved.person = res
       .then 'post', -> @('petsX', { person: saved.person.id, name: 'pet1' }, noErr (res) -> saved.pet1 = res)
@@ -475,7 +475,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       saved = {}
       resultStatuses = {}
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'typeA', { name: 'a1' }, noErr (a1) ->
           api.post 'typeB', { name: 'b1' }, noErr (b1) ->
             async.forEach [1,2,3], (item, callback) ->
@@ -508,7 +508,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
       saved = {}
       resultStatuses = {}
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'typeC', { name: 'c1' }, noErr (c1) ->
           api.post 'typeD', { name: 'd1' }, noErr (d1) ->
             async.forEach [['typeC', c1.id, 'belongsTo2', d1.id], ['typeD', d1.id, 'belongsTo', c1.id]], (item, callback) ->
@@ -540,7 +540,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             belongsTo: { type: 'hasMany', model: 'typeA' }
 
       saved = {}
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'typeA', { name: 'a' }, noErr (a) ->
           api.post 'typeB', { name: 'b' }, noErr (b) ->
             api.postMany 'typeA', a.id, 'relation-that-does-not-exist', b.id, (err) ->
@@ -564,7 +564,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             belongsTo: { type: 'hasMany', model: 'typeA' }
 
       saved = {}
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'typeA', { name: 'a' }, noErr (a) ->
           api.post 'typeB', { name: 'b' }, noErr (b) ->
             api.delMany 'typeA', a.id, 'relation-that-does-not-exist', b.id, (err) ->
@@ -590,7 +590,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
             name: { type: 'string', default: '' }
             orgnr: { type: 'string', default: '' }
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'accounts', { name: 'a1' }, noErr (account) ->
           account.should.have.keys ['name', 'id']
           api.post 'companies', { name: 'n', orgnr: 'nbr' }, (err, company) ->
@@ -607,7 +607,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             name: { type: 'string', default: '' }
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'accounts', { name: 'a1' }, noErr (account) ->
           api.putOne 'accounts', { name: 'n1', age: 10, desc: 'test' }, { id: account.id }, (err, data) ->
             err.should.eql new Error()
@@ -627,7 +627,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             name: { type: 'string', default: '' }
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'other', { name: 'a1' }, noErr (other) ->
           api.post 'accounts', { name: 'a1' }, noErr (account) ->
             api.putOne 'accounts', { name: 'n1' }, { id: other.id }, (err, data) ->
@@ -645,7 +645,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
           fields:
             name: { type: 'string', default: '' }
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         api.post 'accounts', { name: 'a1' }, noErr (account) ->
           api.putOne 'accounts', { name: 'n1' }, { id: 1 }, (err, data) ->
             err.should.eql new Error()
@@ -675,7 +675,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
         response: null
       ]
 
-      api.connect connectionString, model, noErr ->
+      api.connect connectionData, model, noErr ->
         async.forEach indata, (d, callback) ->
           api.post 'pizzas', { name: d.name }, (err, res) ->
             if d.response != null
@@ -718,7 +718,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
 
       saved = {}
 
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
         account.should.have.keys ['name', 'id']
         saved.account = account
@@ -789,7 +789,7 @@ exports.runTests = (manikin, dropDatabase, connectionString) ->
               model: 'devices'
 
       saved = {}
-      promise(api).connect(connectionString, model, noErr())
+      promise(api).connect(connectionData, model, noErr())
       .post 'accounts', { email: 'some@email.com' }, noErr (account) ->
         saved.account = account
       .then 'post', -> @ 'questions', { name: 'q1', account: saved.account.id }, noErr (question) ->
