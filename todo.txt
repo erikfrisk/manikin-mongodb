@@ -2,6 +2,10 @@ Test with and without inverseName on many-to-many relations.
 
 100% coverage
 
+More thoughts:
+* Mongo appears to store everyting as UTC. What if I want to keep the time zone component of my dates?
+* How should it work when there can be more than two owners for an object?
+
 The kinds of tests that have been written for sally should be applied directly to this layer.
 
 Get rid of all x-owner and x-indirect-owner in the mongoose data - that information should be fetched from meta instead!
