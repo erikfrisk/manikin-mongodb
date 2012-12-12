@@ -23,4 +23,11 @@ Should ID's be considered global between all models or local for their particula
 - If global, then the api could be slightly different (why required the name of the target for a put for example)
 - If local, then there are tests breaking this.
 
+
 Test what happens if two fields are invalid according to custom validators; what should the error output be?
+
+Mocking manikin-mem should be easy, so it should have 100% test coverage without trouble.
+
+Start filling in the blanks in manikin-mem, test-wise.
+
+Write tests for datatypes; how they are stored, that they are validated and how they are retrieved; in particular dates!
