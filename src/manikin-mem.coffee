@@ -53,9 +53,7 @@ exports.create = ->
 
   objectSubset = (filter) -> (obj) ->
     filterKeys = Object.keys(filter)
-    o = _(obj).pick(filterKeys...)
-    x = deepEquals(o, filter)
-    x
+    deepEquals(_(obj).pick(filterKeys...), filter)
 
   delAllMatches = (model, config) ->
     toDeletes = db[model].filter(objectSubset(config))
@@ -67,7 +65,7 @@ exports.create = ->
       # hitta alla many-to-many-relationer som den hör till och ta bort dom därifrån
       metamodels[model].manyToMany.forEach (mm) ->
         db[mm.ref].forEach (obj) ->
-          obj[mm.inverseName] = obj[mm.inverseName].filter((x) -> x != toDelete.id)
+          obj[mm.inverseName] = obj[mm.inverseName].filter (x) -> x != toDelete.id
 
       # ta bort ägda objekt rekursivt
       metamodels[model].owns.forEach (owned) ->
