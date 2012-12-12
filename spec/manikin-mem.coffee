@@ -7,4 +7,4 @@ dropDatabase = (db, done) ->
     delete db[key]
   done()
 
-require('./manikin').runTests(manikin, dropDatabase, database)
+require('./manikin-spec').runTests(manikin, dropDatabase, database)
