@@ -17,3 +17,7 @@ There are at least a couple of features that have not been tested:
 * Cascade in "preRemoveCascadeNullable" (should work by removing as hasOne indrectly, by deleteing an owner for example)
 * Uniques
 * Require
+
+Should ID's be considered global between all models or local for their particular models?
+- If global, then the api could be slightly different (why required the name of the target for a put for example)
+- If local, then there are tests breaking this.
