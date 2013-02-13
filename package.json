@@ -12,10 +12,11 @@
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src",
     "test": "mocha --compilers coffee:coffee-script spec/*.coffee",
-    "coverage": "jscov src .cov && SRC_DIR=.cov mocha --compilers coffee:coffee-script --reporter mocha-term-cov-reporter spec/manikin-tools.coffee && SRC_DIR=.cov mocha --compilers coffee:coffee-script --reporter mocha-term-cov-reporter spec/manikin-mongo.coffee",
+    "coverage": "jscov src .cov && SRC_DIR=.cov mocha --compilers coffee:coffee-script --reporter mocha-term-cov-reporter spec/*.coffee",
     "prestart": "coffee -co lib src"
   },
   "dependencies": {
+    "manikin-tools": "0.1.0",
     "mongoose": "3.4.0",
     "underscore": "1.4.3",
     "async": "0.1.22"

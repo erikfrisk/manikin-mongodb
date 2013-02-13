@@ -2,7 +2,7 @@
 
 async = require 'async'
 _ = require 'underscore'
-tools = require './manikin-tools'
+tools = require 'manikin-tools'
 
 
 
