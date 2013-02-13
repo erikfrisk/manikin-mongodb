@@ -1,4 +1,5 @@
-manikin = require('./setup').requireSource('manikin-mongo')
+jscov = require 'jscov'
+manikin = require jscov.cover('..', 'lib', 'manikin-mongo')
 mongojs = require 'mongojs'
 _ = require 'underscore'
 async = require 'async'
