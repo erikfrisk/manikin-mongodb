@@ -164,8 +164,7 @@ exports.create = ->
       internalListSub mod.name, mod.field, id, {}, propagate callback, (data) ->
         async.forEach data, (item, callback) ->
           item[mod.field] = null
-          item.save()
-          callback()
+          item.save(callback)
         , callback
     , next
 
