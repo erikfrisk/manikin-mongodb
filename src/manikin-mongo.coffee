@@ -131,6 +131,21 @@ exports.create = ->
 
 
 
+  preSaveHasOne = (owner, that, next) ->
+    hasOnes = _.pairs(specmodels[owner.modelName]?.fields).filter ([key, value]) ->
+      value.type == 'hasOne'
+    .map ([key, value]) ->
+      { property: key, model: value.model }
+
+    async.forEach hasOnes, (hasOne, callback) ->
+      filter = preprocFilter({ id: that[hasOne.property] })
+      models[hasOne.model].findOne filter, (err, data) ->
+        if err || !data?
+          callback(new Error("Invalid hasOne-key for '#{hasOne.property}'"))
+        else
+          callback()
+    , next
+
   preRemoveCascadeNonNullable = (owner, id, next) ->
     manys = getMeta(owner.modelName).manyToMany
 
@@ -191,7 +206,7 @@ exports.create = ->
       else if src[key].type == 'boolean'
         tgt[key] = _.extend({}, src[key], { type: Boolean })
       else if src[key].type == 'hasOne'
-        tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation }
+        tgt[key] = { ref: src[key].model, 'x-validation': src[key].validation, type: ObjectId }
       else if src[key].type == 'hasMany'
         tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName }]
         allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
@@ -258,6 +273,7 @@ exports.create = ->
           models[name].schema.pre 'save', nullablesValidation(models[name].schema)
           models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
           models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+          models[name].schema.pre 'save',   (next) -> preSaveHasOne(models[name], this, next)
       catch ex
         callback(ex)
         return

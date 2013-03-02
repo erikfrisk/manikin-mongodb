@@ -800,6 +800,35 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         saved.d1 = device
       .then 'post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
         saved.d2 = device
+
+      # Can set it to a deviceID
       .then 'post', -> @ 'answers', { option: 1, question: saved.q1.id, device: saved.d1.id }, noErr (answer) ->
-        saved.d1.id.should.eql answer.device
+        answer.device.should.eql saved.d1.id
+        saved.a1 = answer
+
+      #Can set it to null
+      .then 'post', -> @ 'answers', { option: 1, question: saved.q1.id, device: null }, noErr (answer) ->
+        should.not.exist answer.device
+        saved.a2 = answer
+
+      # Can update it to null
+      .then 'putOne', -> @ 'answers', { device: null }, { id: saved.a1.id }, noErr (answer) ->
+        should.not.exist answer.device
+
+      # Can update it to another device
+      .then 'putOne', -> @ 'answers', { device: saved.d2.id }, { id: saved.a1.id }, noErr (answer) ->
+        answer.device.should.eql saved.d2.id
+
+      # If the devices is deleted, the answers device is set to null
+      .then 'delOne', -> @ 'devices', { id: saved.d2.id }, noErr () ->
+        (1).should.eql 1
+      .then 'getOne', -> @ 'answers', { filter: { id: saved.a1.id } }, noErr (answer) ->
+        should.not.exist answer.device
+
+      # Can't update it to something that is not a key of the correct type
+      .then 'putOne', -> @ 'answers', { device: saved.a2.id }, { id: saved.a1.id }, (err, answer) ->
+        err.should.eql new Error()
+        err.toString().should.eql "Error: Invalid hasOne-key for 'device'"
+        should.not.exist answer
+
       .then(done)
