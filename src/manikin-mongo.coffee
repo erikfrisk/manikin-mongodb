@@ -367,7 +367,8 @@ exports.create = ->
     filter = preprocFilter(filter)
 
     model = models[modelName]
-    inputFieldsValid = getKeys data
+    mixedFields = getMeta(modelName).fields.filter((x) -> x.type == 'mixed').map (x) -> x.name
+    inputFieldsValid = getKeys(_.omit(data, mixedFields))
     inputFields = Object.keys data
     validField = Object.keys(model.schema.paths)
 

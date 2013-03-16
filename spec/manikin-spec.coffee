@@ -229,7 +229,10 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         api.post 'stuffs', { name: 'a1', stats: { s1: 's1', s2: 2 } }, noErr (survey) ->
           survey.should.have.keys ['id', 'name', 'stats']
           survey.stats.should.have.keys ['s1', 's2']
-          api.close(done)
+          api.putOne "stuffs", { name: 'a2', stats: { x: 1 } }, { id: survey.id }, noErr (survey) ->
+            survey.should.have.keys ['id', 'name', 'stats']
+            survey.stats.should.have.keys ['x']
+            api.close(done)
 
 
 
