@@ -832,3 +832,28 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         should.not.exist answer
 
       .then(done)
+
+
+    it "should be possible to add objects even when their hasOnes-collections are empty", (done) ->
+      api = manikin.create()
+      model =
+        bananas:
+          owners: {}
+          fields:
+            color: 'string'
+
+        monkeys:
+          owners: {}
+          fields:
+            name: 'string'
+            banana:
+              type: 'hasOne'
+              model: 'bananas'
+
+      saved = {}
+      promise(api).connect(connectionData, model, noErr())
+      .then 'post', -> @ 'monkeys', { name: 'george' }, noErr (monkey) ->
+        saved.monkey = monkey
+      .then 'list', -> @ 'monkeys', {}, noErr (monkeys) ->
+        monkeys.length.should.eql 1
+      .then(done)

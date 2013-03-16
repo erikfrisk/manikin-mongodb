@@ -138,6 +138,10 @@ exports.create = ->
       { property: key, model: value.model }
 
     async.forEach hasOnes, (hasOne, callback) ->
+      if !that[hasOne.property]?
+        callback()
+        return
+
       filter = preprocFilter({ id: that[hasOne.property] })
       models[hasOne.model].findOne filter, (err, data) ->
         if err || !data?
