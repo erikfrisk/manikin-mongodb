@@ -495,12 +495,20 @@ exports.create = ->
 
 
 
-  api.getMany = (primaryModel, primaryId, propertyName, callback) ->
-    models[primaryModel]
-    .findOne({ _id: primaryId })
-    .populate(propertyName)
-    .exec (err, story) ->
-      callback err, massage(story[propertyName])
+  api.getMany = (primaryModel, primaryId, propertyName, filter, callback) ->
+
+    # backwards compatibility
+    if !callback?
+      callback = filter
+      filter = {}
+
+    {ref, inverseName} = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
+
+    ownerFilter = _.object([[inverseName, primaryId]])
+    finalFilter = _.extend({}, filter, ownerFilter)
+
+    models[ref].find finalFilter, propagate callback, (data) ->
+      callback(null, massage(data))
 
 
 
