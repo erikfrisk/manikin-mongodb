@@ -9,6 +9,6 @@ dropDatabase = (connStr, done) ->
   conn.collectionNames (err, colls) ->
     throw err if err
     collNames = colls.map ({ name }) -> _(name.split('.')).last()
-    async.forEach collNames.slice(1), conn.dropCollection, done
+    async.forEach collNames.slice(1), conn.dropCollection.bind(conn), done
 
 require('./manikin-spec').runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
