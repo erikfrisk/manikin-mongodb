@@ -159,7 +159,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
       promise(api).connect(connectionData, model, noErr())
       .post('stuffz', { v1: 'jakob', v2: 12.5, v3: '2012-10-15', v4: true, v5: { v6: 'nest', v7: 7 } }, noErr())
-      .list 'stuffz', {}, noErr (list) ->
+      .list('stuffz', {}, noErr (list) ->
         saved.id = list[0].id
         list.map((x) -> _(x).omit('id')).should.eql [
           v1: 'jakob'
@@ -170,7 +170,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
             v6: 'nest'
             v7: 7
         ]
-      .then 'putOne', -> @ 'stuffz', { v1: 'jakob2', v3: '2012-10-15T13:37:00', v4: false, v5: { v6: 'nest2', v7: 14 } }, { id: saved.id }, noErr (r) ->
+      ).then('putOne', -> @ 'stuffz', { v1: 'jakob2', v3: '2012-10-15T13:37:00', v4: false, v5: { v6: 'nest2', v7: 14 } }, { id: saved.id }, noErr (r) ->
         _(r).omit('id').should.eql
           v1: 'jakob2'
           v2: 12.5
@@ -179,7 +179,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
           v5:
             v6: 'nest2'
             v7: 14
-      .then 'getOne', -> @ 'stuffz', { filter: { id: saved.id } }, noErr (r) ->
+      ).then('getOne', -> @ 'stuffz', { filter: { id: saved.id } }, noErr (r) ->
         _(r).omit('id').should.eql
           v1: 'jakob2'
           v2: 12.5
@@ -188,7 +188,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
           v5:
             v6: 'nest2'
             v7: 14
-      .then ->
+      ).then ->
         api.close(done)
 
 
@@ -206,11 +206,11 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         err.should.eql new Error()
         err.toString().should.eql 'Error: No such id'
         should.not.exist data
-      .delOne 'table', { id: '123' }, (err, data) ->
+      .delOne('table', { id: '123' }, (err, data) ->
         err.should.eql new Error()
         err.toString().should.eql 'Error: No such id'
         should.not.exist data
-      .then ->
+      ).then ->
         api.close(done)
 
 
@@ -251,10 +251,10 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       .post('warez', { name: 'jakob', stats: 1 }, noErr())
       .post('warez', { name: 'erik', stats: 2 }, noErr())
       .post('warez', { name: 'julia', stats: 3 }, noErr())
-      .list 'warez', {}, noErr (list) ->
+      .list('warez', {}, noErr (list) ->
         names = list.map (x) -> x.name
         names.should.eql ['erik', 'jakob', 'julia']
-      .then ->
+      ).then ->
         api.close(done)
 
 
@@ -308,41 +308,41 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       saved = {}
 
       promise(api).connect(connectionData, model, noErr())
-      .post 'accounts', { name: 'n1' }, noErr (a1) ->
+      .post('accounts', { name: 'n1' }, noErr (a1) ->
         a1.should.have.keys ['name', 'id']
         saved.a1 = a1
-      .then 'post', -> @ 'accounts', { name: 'n2' }, noErr (a2) ->
+      ).then('post', -> @ 'accounts', { name: 'n2' }, noErr (a2) ->
         a2.should.have.keys ['name', 'id']
         saved.a2 = a2
-      .list 'accounts', {}, noErr (accs) ->
+      ).list('accounts', {}, noErr (accs) ->
         accs.should.eql [saved.a1, saved.a2]
-      .then 'getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
+      ).then('getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
         acc.should.eql saved.a1
-      .then 'getOne', -> @ 'accounts', { filter: { name: 'n2' } }, noErr (acc) ->
+      ).then('getOne', -> @ 'accounts', { filter: { name: 'n2' } }, noErr (acc) ->
         acc.should.eql saved.a2
-      .then 'getOne', -> @ 'accounts', { filter: { name: 'does-not-exist' } }, (err, acc) ->
+      ).then('getOne', -> @ 'accounts', { filter: { name: 'does-not-exist' } }, (err, acc) ->
         err.toString().should.eql 'Error: No match'
         should.not.exist acc
 
-      .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, noErr (company) ->
+      ).then('post', -> @ 'companies', { account: saved.a1.id, name: 'J Dev AB', orgnr: '556767-2208' }, noErr (company) ->
         company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
         saved.c1 = company
-      .then 'post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, noErr (company) ->
+      ).then('post', -> @ 'companies', { account: saved.a1.id, name: 'Lean Machine AB', orgnr: '123456-1234' }, noErr (company) ->
         company.should.have.keys ['name', 'orgnr', 'account', 'id', 'at']
         saved.c2 = company
-      .then 'post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, noErr (company) ->
+      ).then('post', -> @ 'employees', { company: saved.c1.id, name: 'Jakob' }, noErr (company) ->
         company.should.have.keys ['name', 'company', 'account', 'id']
 
       # testing to get an account without nesting
-      .then 'getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
+      ).then('getOne', -> @ 'accounts', { filter: { id: saved.a1.id } }, noErr (acc) ->
         _(acc).omit('id').should.eql { name: 'n1' }
 
       # testing to get an account with nesting
-      .then 'getOne', -> @ 'accounts', { nesting: 1, filter: { id: saved.a1.id } }, noErr (acc) ->
+      ).then('getOne', -> @ 'accounts', { nesting: 1, filter: { id: saved.a1.id } }, noErr (acc) ->
         _(acc).omit('id').should.eql { name: 'n1' }
 
 
-      .then ->
+      ).then ->
         api.close(done)
 
 
@@ -364,17 +364,17 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       saved = {}
 
       promise(api).connect(connectionData, model, noErr())
-      .then 'post', -> @('petsY', { name: 'pet1' }, noErr (res) -> saved.pet1 = res)
-      .then 'post', -> @('foodsY', { name: 'food1' }, noErr (res) -> saved.food1 = res)
-      .then 'postMany', -> @('foodsY', saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
-      .then 'getMany', -> @('petsY', saved.pet1.id, 'eats', noErr((data) -> data.length.should.eql 1))
-      .then 'delOne', -> @('petsY', { id: saved.pet1.id }, noErr())
-      .then 'list', -> @('petsY', { }, noErr((data) -> data.length.should.eql 0))
-      .then 'list', -> @('foodsY', { }, noErr (data) -> data.should.eql [
+      .then('post', -> @('petsY', { name: 'pet1' }, noErr (res) -> saved.pet1 = res))
+      .then('post', -> @('foodsY', { name: 'food1' }, noErr (res) -> saved.food1 = res))
+      .then('postMany', -> @('foodsY', saved.food1.id, 'eatenBy', saved.pet1.id, noErr()))
+      .then('getMany', -> @('petsY', saved.pet1.id, 'eats', noErr((data) -> data.length.should.eql 1)))
+      .then('delOne', -> @('petsY', { id: saved.pet1.id }, noErr()))
+      .then('list', -> @('petsY', { }, noErr((data) -> data.length.should.eql 0)))
+      .then('list', -> @('foodsY', { }, noErr (data) -> data.should.eql [
         id: saved.food1.id
         name: 'food1'
         eatenBy: []
-      ])
+      ]))
       .then -> api.close(done)
 
 
@@ -397,15 +397,15 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       saved = {}
 
       promise(api).connect(connectionData, model, noErr())
-      .post 'people', { name: 'q1' }, noErr (q1) ->
+      .post('people', { name: 'q1' }, noErr (q1) ->
         saved.q1 = q1
-      .post 'people', { name: 'q2' }, noErr (q2) ->
+      ).post('people', { name: 'q2' }, noErr (q2) ->
         saved.q2 = q2
-      .post 'devices', { name: 'd1' }, noErr (d1) ->
+      ).post('devices', { name: 'd1' }, noErr (d1) ->
         saved.d1 = d1
-      .post 'devices', { name: 'd2' }, noErr (d2) ->
+      ).post('devices', { name: 'd2' }, noErr (d2) ->
         saved.d2 = d2
-      .then 'postMany', -> @('people',  saved.q1.id, 'boundDevices', saved.d1.id, noErr())
+      ).then 'postMany', -> @('people',  saved.q1.id, 'boundDevices', saved.d1.id, noErr())
       .then 'postMany', -> @('people',  saved.q1.id, 'boundDevices', saved.d2.id, noErr())
       .then 'getMany',  -> @('people',  saved.q1.id, 'boundDevices', noErr((data) -> data.length.should.eql 2))
       .then 'getMany',  -> @('people',  saved.q1.id, 'boundDevices', { name: 'd1' }, noErr((data) -> data.length.should.eql 1))
@@ -447,9 +447,9 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       saved = {}
 
       promise(api).connect(connectionData, model, noErr())
-      .post 'peopleX', { name: 'p1' }, noErr (res) ->
+      .post('peopleX', { name: 'p1' }, noErr (res) ->
         saved.person = res
-      .then 'post', -> @('petsX', { person: saved.person.id, name: 'pet1' }, noErr (res) -> saved.pet1 = res)
+      ).then 'post', -> @('petsX', { person: saved.person.id, name: 'pet1' }, noErr (res) -> saved.pet1 = res)
       .then 'post', -> @('foodsX', { name: 'food1' }, noErr (res) -> saved.food1 = res)
       .then 'postMany', -> @('foodsX',  saved.food1.id, 'eatenBy', saved.pet1.id, noErr())
       .then 'getMany',  -> @('petsX', saved.pet1.id, 'eats', noErr((data) -> data.length.should.eql 1))
@@ -725,33 +725,33 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       saved = {}
 
       promise(api).connect(connectionData, model, noErr())
-      .post 'accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
+      .post('accounts', { name: 'a1', bullshit: 123 }, noErr (account) ->
         account.should.have.keys ['name', 'id']
         saved.account = account
-      .then 'post', -> @ 'companies2', { name: 'n', orgnr: 'nbr', account: saved.account.id }, noErr (company) ->
+      ).then('post', -> @ 'companies2', { name: 'n', orgnr: 'nbr', account: saved.account.id }, noErr (company) ->
         saved.company = company
         company.should.have.keys ['id', 'name', 'orgnr', 'account']
-      .then 'post', -> @ 'companies2', { name: 'n2', orgnr: 'nbr', account: saved.account.id }, noErr (company2) ->
+      ).then('post', -> @ 'companies2', { name: 'n2', orgnr: 'nbr', account: saved.account.id }, noErr (company2) ->
         saved.company2 = company2
         company2.should.have.keys ['id', 'name', 'orgnr', 'account']
-      .then 'post', -> @ 'contacts', { email: '@', phone: '112', company: saved.company.id }, noErr (contact) ->
+      ).then('post', -> @ 'contacts', { email: '@', phone: '112', company: saved.company.id }, noErr (contact) ->
         saved.contact = contact
         contact.should.have.keys ['id', 'email', 'phone', 'account', 'company']
-      .then 'post', -> @ 'contacts', { email: '@2', phone: '911', company: saved.company2.id }, noErr (contact2) ->
+      ).then('post', -> @ 'contacts', { email: '@2', phone: '911', company: saved.company2.id }, noErr (contact2) ->
         saved.contact2 = contact2
         contact2.should.have.keys ['id', 'email', 'phone', 'account', 'company']
-      .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact.id }, noErr (pet) ->
+      ).then('post', -> @ 'pets', { race: 'dog', contact: saved.contact.id }, noErr (pet) ->
         pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
         pet.contact.should.eql saved.contact.id
         pet.company.should.eql saved.company.id
         pet.account.should.eql saved.account.id
-      .then 'post', -> @ 'pets', { race: 'dog', contact: saved.contact2.id }, noErr (pet) ->
+      ).then('post', -> @ 'pets', { race: 'dog', contact: saved.contact2.id }, noErr (pet) ->
         pet.should.have.keys ['id', 'race', 'account', 'company', 'contact']
         pet.contact.should.eql saved.contact2.id
         pet.company.should.eql saved.company2.id
         pet.account.should.eql saved.account.id
 
-      .list('pets', {}, noErr ((res) -> res.length.should.eql 2))
+      ).list('pets', {}, noErr ((res) -> res.length.should.eql 2))
       .list('contacts', {}, noErr ((res) -> res.length.should.eql 2))
       .list('companies2', {}, noErr ((res) -> res.length.should.eql 2))
       .list('accounts', {}, noErr ((res) -> res.length.should.eql 1))
@@ -796,48 +796,48 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
       saved = {}
       promise(api).connect(connectionData, model, noErr())
-      .post 'accounts', { email: 'some@email.com' }, noErr (account) ->
+      .post('accounts', { email: 'some@email.com' }, noErr (account) ->
         saved.account = account
-      .then 'post', -> @ 'questions', { name: 'q1', account: saved.account.id }, noErr (question) ->
+      ).then('post', -> @ 'questions', { name: 'q1', account: saved.account.id }, noErr (question) ->
         saved.q1 = question
-      .then 'post', -> @ 'questions', { name: 'q2', account: saved.account.id }, noErr (question) ->
+      ).then('post', -> @ 'questions', { name: 'q2', account: saved.account.id }, noErr (question) ->
         saved.q2 = question
-      .then 'post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
+      ).then('post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
         saved.d1 = device
-      .then 'post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
+      ).then('post', -> @ 'devices', { name: 'd1', account: saved.account.id }, noErr (device) ->
         saved.d2 = device
 
       # Can set it to a deviceID
-      .then 'post', -> @ 'answers', { option: 1, question: saved.q1.id, device: saved.d1.id }, noErr (answer) ->
+      ).then('post', -> @ 'answers', { option: 1, question: saved.q1.id, device: saved.d1.id }, noErr (answer) ->
         answer.device.should.eql saved.d1.id
         saved.a1 = answer
 
       #Can set it to null
-      .then 'post', -> @ 'answers', { option: 1, question: saved.q1.id, device: null }, noErr (answer) ->
+      ).then('post', -> @ 'answers', { option: 1, question: saved.q1.id, device: null }, noErr (answer) ->
         should.not.exist answer.device
         saved.a2 = answer
 
       # Can update it to null
-      .then 'putOne', -> @ 'answers', { device: null }, { id: saved.a1.id }, noErr (answer) ->
+      ).then('putOne', -> @ 'answers', { device: null }, { id: saved.a1.id }, noErr (answer) ->
         should.not.exist answer.device
 
       # Can update it to another device
-      .then 'putOne', -> @ 'answers', { device: saved.d2.id }, { id: saved.a1.id }, noErr (answer) ->
+      ).then('putOne', -> @ 'answers', { device: saved.d2.id }, { id: saved.a1.id }, noErr (answer) ->
         answer.device.should.eql saved.d2.id
 
       # If the devices is deleted, the answers device is set to null
-      .then 'delOne', -> @ 'devices', { id: saved.d2.id }, noErr () ->
+      ).then('delOne', -> @ 'devices', { id: saved.d2.id }, noErr () ->
         (1).should.eql 1
-      .then 'getOne', -> @ 'answers', { filter: { id: saved.a1.id } }, noErr (answer) ->
+      ).then('getOne', -> @ 'answers', { filter: { id: saved.a1.id } }, noErr (answer) ->
         should.not.exist answer.device
 
       # Can't update it to something that is not a key of the correct type
-      .then 'putOne', -> @ 'answers', { device: saved.a2.id }, { id: saved.a1.id }, (err, answer) ->
+      ).then('putOne', -> @ 'answers', { device: saved.a2.id }, { id: saved.a1.id }, (err, answer) ->
         err.should.eql new Error()
         err.toString().should.eql "Error: Invalid hasOne-key for 'device'"
         should.not.exist answer
 
-      .then(done)
+      ).then(done)
 
 
     it "should be possible to add objects even when their hasOnes-collections are empty", (done) ->
@@ -858,8 +858,8 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
       saved = {}
       promise(api).connect(connectionData, model, noErr())
-      .then 'post', -> @ 'monkeys', { name: 'george' }, noErr (monkey) ->
+      .then('post', -> @ 'monkeys', { name: 'george' }, noErr (monkey) ->
         saved.monkey = monkey
-      .then 'list', -> @ 'monkeys', {}, noErr (monkeys) ->
+      ).then('list', -> @ 'monkeys', {}, noErr (monkeys) ->
         monkeys.length.should.eql 1
-      .then(done)
+      ).then(done)
