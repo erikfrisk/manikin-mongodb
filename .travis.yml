@@ -9,3 +9,4 @@ services:
 branches:
   only:
     - master
+    - minver
