@@ -268,6 +268,7 @@ exports.create = ->
   do ->
     connection = null
     lateLoadModel = null
+    dbUrl = null
 
     api.connect = (databaseUrl, inputModels, callback) ->
       if !callback?
@@ -276,6 +277,7 @@ exports.create = ->
 
       try
         connection = mongoose.createConnection(databaseUrl)
+        dbUrl = databaseUrl
       catch ex
         callback(ex)
         return
@@ -288,6 +290,9 @@ exports.create = ->
     api.close = (callback) ->
       connection.close()
       callback()
+
+    api.connectionData = ->
+      dbUrl
 
     api.load = (inputModels, callback) ->
       if connection == null

@@ -21,6 +21,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       'connect'
       'close'
       'load'
+      'connectionData'
 
       # model operations
       'post'
@@ -150,6 +151,20 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         f.should.throw()
         api.close(done)
 
+
+    describe 'connectionData', ->
+
+      it "returns the data used to connect to the database", (done) ->
+        api = manikin.create()
+        mad = {
+          apa:
+            fields:
+              v1: 'string'
+        }
+
+        api.connect connectionData, noErr ->
+          api.connectionData().should.eql connectionData
+          done()
 
 
     describe 'should not save configuration between test runs', ->
