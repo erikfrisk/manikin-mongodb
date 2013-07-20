@@ -267,27 +267,41 @@ exports.create = ->
   # ==========
   do ->
     connection = null
+    lateLoadModel = null
 
     api.connect = (databaseUrl, inputModels, callback) ->
+      if !callback?
+        callback = inputModels
+        inputModels = lateLoadModel
+
       try
         connection = mongoose.createConnection(databaseUrl)
-
-        defModels(inputModels).forEach ([name, v]) ->
-          models[name] = makeModel(connection, name, v.fields)
-          models[name].schema.pre 'save', nullablesValidation(models[name].schema)
-          models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
-          models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
-          models[name].schema.pre 'save',   (next) -> preSaveHasOne(models[name], this, next)
       catch ex
         callback(ex)
         return
 
-      callback()
+      if inputModels
+        api.load(inputModels, callback)
+      else
+        callback()
 
     api.close = (callback) ->
       connection.close()
       callback()
 
+    api.load = (inputModels, callback) ->
+      if connection == null
+        lateLoadModel = inputModels
+        callback()
+        return
+
+      defModels(inputModels).forEach ([name, v]) ->
+        models[name] = makeModel(connection, name, v.fields)
+        models[name].schema.pre 'save', nullablesValidation(models[name].schema)
+        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
+        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+        models[name].schema.pre 'save',   (next) -> preSaveHasOne(models[name], this, next)
+      callback()
 
 
   # The five base methods

@@ -20,6 +20,7 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
       # support-methods
       'connect'
       'close'
+      'load'
 
       # model operations
       'post'
@@ -104,6 +105,50 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         err.should.eql new Error()
         err.toString().should.match /^Error:/
         done()
+
+
+
+    it "should be possible to load after connecting without a model", (done) ->
+      api = manikin.create()
+      mad = {
+        apa:
+          fields:
+            v1: 'string'
+      }
+
+      api.connect connectionData, noErr ->
+        api.load mad, noErr ->
+          api.post 'apa', { v2: '1', v1: '2' }, noErr ->
+            api.close(done)
+
+
+    it "should be posslbe to load first and then connect without a model", (done) ->
+      api = manikin.create()
+      mad = {
+        apa:
+          fields:
+            v1: 'string'
+      }
+
+      api.load mad, noErr ->
+        api.connect connectionData, noErr ->
+          api.post 'apa', { v2: '1', v1: '2' }, noErr ->
+            api.close(done)
+
+
+    it "connecting without a model and never loading will throw errors when used", (done) ->
+      api = manikin.create()
+      mad = {
+        apa:
+          fields:
+            v1: 'string'
+      }
+
+      # expecta att post throwar
+      api.connect connectionData, noErr ->
+        f = -> api.post('apa', { v2: '1', v1: '2' }, noErr)
+        f.should.throw()
+        api.close(done)
 
 
 
