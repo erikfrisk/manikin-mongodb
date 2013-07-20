@@ -4,6 +4,10 @@
   "version": "0.11.2",
   "main": "./lib/manikin-mongo.js",
   "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/jakobmattsson/manikin-mongodb.git"
+  },
   "engines": {
     "node": ">= 0.8.x < 0.12"
   },
