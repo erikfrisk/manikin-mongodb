@@ -275,6 +275,23 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
 
 
+
+    it "should return an error in the callback if the given model does not exist in a listing", (done) ->
+      api = manikin.create()
+      mad = {
+        apa:
+          fields:
+            v1: 'string'
+      }
+
+      api.load mad, noErr ->
+        api.connect connectionData, noErr ->
+          api.list 'non-existing', { v2: '1', v1: '2' }, (err) ->
+            err.should.eql new Error()
+            err.toString().should.eql 'Error: No model named non-existing'
+            api.close(done)
+
+
     it "should allow mixed properties in models definitions", (done) ->
       api = manikin.create()
 

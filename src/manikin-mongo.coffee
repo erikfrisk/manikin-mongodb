@@ -345,7 +345,11 @@ exports.create = ->
   api.list = (model, filter, callback) ->
     filter = preprocFilter(filter)
 
-    defaultSort = specmodels[model].defaultSort
+    monModel = specmodels[model]
+
+    return callback(new Error("No model named #{model}")) if !monModel?
+
+    defaultSort = monModel.defaultSort
 
     rr = models[model].find(filter)
     if defaultSort?
