@@ -19,6 +19,7 @@
     "prestart": "coffee -co lib src"
   },
   "dependencies": {
+    "q": ">= 0.9.0 < 0.10",
     "manikin-tools": ">= 0.1.1 < 0.2",
     "mongoose": "3.4.0",
     "underscore": ">= 1.4.0 < 2",

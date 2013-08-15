@@ -35,6 +35,21 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
     ]
 
 
+  qadapt = (obj) ->
+    Q = require 'q'
+    mets = ['connect', 'load', 'close', 'post', 'list', 'getOne', 'delOne', 'putOne', 'delMany', 'postMany', 'getMany']
+
+    res = {}
+    Object.keys(obj).forEach (m) ->
+      res[m] = (args...) ->
+        lastArg = args.slice(-1)[0]
+        if typeof lastArg == 'function' || m not in mets
+          obj[m].apply(this, args)
+        else
+          Q.npost(obj, m, args)
+    res
+
+
   promise = (api) ->
 
     obj = {}
@@ -274,6 +289,23 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
         api.close(done)
 
 
+    it "should detect when an object id does not exist 22", (done) ->
+      api = manikin.create()
+
+      model =
+        table:
+          fields:
+            v1: 'string'
+
+      f = (err) ->
+        err.should.eql new Error()
+        err.toString().should.eql 'Error: No such id'
+
+      api = qadapt(api)
+      api.connect(connectionData, model).then ->
+        api.getOne('table', { filter: { id: '123' } })
+      .fail(f).fin ->
+        api.close(done)
 
 
     it "should return an error in the callback if the given model does not exist in a listing", (done) ->
