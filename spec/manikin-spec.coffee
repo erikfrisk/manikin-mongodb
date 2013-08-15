@@ -737,6 +737,24 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
 
 
+    it "should allow undefined values", (done) ->
+      api = manikin.create()
+
+      model =
+        pizzas:
+          owners: {}
+          fields:
+            name:
+              type: 'string'
+
+      api.connect connectionData, model, noErr ->
+        api.post 'pizzas', { name: 'jakob' }, noErr (res) ->
+          api.putOne 'pizzas', { name: undefined }, { id: res.id }, noErr (res) ->
+            should.not.exist res.name
+            api.close(done)
+
+
+
     it "should allow custom validators", (done) ->
       api = manikin.create()
 

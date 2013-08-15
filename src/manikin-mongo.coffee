@@ -45,7 +45,7 @@ propagate = (callback, f) ->
 
 
 getKeys = (data, target = [], prefix = '') ->
-  valids = ['Array', 'String', 'Boolean', 'Date', 'Number', 'Null']
+  valids = ['Array', 'String', 'Boolean', 'Date', 'Number', 'Null', 'Undefined']
 
   Object.keys(data).forEach (key) ->
     if valids.some((x) -> _(data[key])['is' + x]())
