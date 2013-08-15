@@ -253,6 +253,49 @@ exports.runTests = (manikin, dropDatabase, connectionData) ->
 
 
 
+    it "should allow posting to nested properties", (done) ->
+      api = manikin.create()
+
+      model =
+        stuffz:
+          fields:
+            v1: 'string'
+            v5:
+              type: 'nested'
+              v6: 'string'
+              v7: 'number'
+
+      saved = {}
+
+      promise(api).connect(connectionData, model, noErr())
+      .post('stuffz', { v1: 'hej', v5: { v6: 'nest', v7: 7 } }, noErr())
+      .then ->
+        api.close(done)
+
+
+    it "should allow putting null to nested properties", (done) ->
+      api = manikin.create()
+
+      model =
+        stuffz:
+          fields:
+            v1: 'string'
+            v5:
+              type: 'nested'
+              v6: 'string'
+              v7: 'number'
+
+      saved = {}
+
+      promise(api).connect(connectionData, model, noErr())
+      .post('stuffz', { v1: 'hej', v5: { v6: 'nest', v7: 7 } }, noErr (v) ->
+        saved.id = v.id
+      ).then('putOne', -> @ 'stuffz', { v1: 'jakob2', v5: null }, { id: saved.id }, noErr (r) ->
+      ).then ->
+        api.close(done)
+
+
+
     it "should detect when an object id does not exist", (done) ->
       api = manikin.create()
 

@@ -395,7 +395,13 @@ exports.create = ->
     inputFields = Object.keys data
     validField = Object.keys(model.schema.paths)
 
-    invalidFields = _.difference(inputFieldsValid, validField)
+    vf = []
+    validField.forEach (x) ->
+      parts = x.split('.')
+      [1..parts.length].forEach (len) ->
+        vf.push(parts.slice(0, len).join('.'))
+
+    invalidFields = _.difference(inputFieldsValid, vf)
 
     if invalidFields.length > 0
       callback(new Error("Invalid fields: " + invalidFields.join(', ')))
