@@ -271,7 +271,7 @@ exports.create = ->
     dbUrl = null
 
     api.connect = (databaseUrl, inputModels, callback) ->
-      if !callback?
+      if !callback? && typeof inputModels == 'function'
         callback = inputModels
         inputModels = lateLoadModel
 
