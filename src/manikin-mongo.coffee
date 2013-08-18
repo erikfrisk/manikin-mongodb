@@ -330,7 +330,7 @@ exports.create = ->
     owners = _(ownersRaw).pluck('plur')
     ownersOwners = _.flatten owners.map (x) -> getMeta(x).owners
 
-    if ownersOwners.length == 0
+    if owners.length == 0
       saveFunc indata
     else
       # Should get all the owners and not just the first.
