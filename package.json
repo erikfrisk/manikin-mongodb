@@ -14,8 +14,8 @@
   "scripts": {
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src",
-    "test": "mocha --compilers coffee:coffee-script spec/*.coffee",
-    "coverage": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --reporter mocha-term-cov-reporter spec/*.coffee",
+    "test": "mocha --compilers coffee:coffee-script --recursive spec",
+    "coverage": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-term-cov-reporter spec",
     "prestart": "coffee -co lib src"
   },
   "dependencies": {
@@ -25,6 +25,7 @@
     "async": ">= 0.1.0 < 3"
   },
   "devDependencies": {
+    "manikin": ">= 0.1.0 < 0.2",
     "jscov": ">= 0.5.1 < 0.6",
     "mocha-term-cov-reporter": ">= 0.1.3 < 0.2",
     "mongojs": ">= 0.7.9 < 0.8",
