@@ -275,17 +275,22 @@ exports.create = ->
         callback = inputModels
         inputModels = lateLoadModel
 
+      onConnected = _.once (err) ->
+        return callback(err) if err?
+
+        dbUrl = databaseUrl
+        if inputModels
+          api.load(inputModels, callback)
+        else
+          callback()
+
       try
         connection = mongoose.createConnection(databaseUrl)
-        dbUrl = databaseUrl
+        connection.on 'error', (err) -> onConnected(err)
+        connection.on 'connected', -> onConnected()
       catch ex
-        callback(ex)
-        return
+        onConnected(ex)
 
-      if inputModels
-        api.load(inputModels, callback)
-      else
-        callback()
 
     api.close = (callback) ->
       connection.close()
@@ -361,7 +366,7 @@ exports.create = ->
 
     models[model].findOne filter, (err, data) ->
       if err
-        if err.toString() == 'Error: Invalid ObjectId'
+        if err.toString() == 'Error: Invalid ObjectId' || err.message.match('Cast to ObjectId failed for value "[^\\"]*" at path "_id"')
           callback(new Error('No such id'))
         else
           callback(err)
@@ -376,7 +381,7 @@ exports.create = ->
 
     models[model].findOne filter, (err, d) ->
       if err
-        if err.toString() == 'Error: Invalid ObjectId'
+        if err.toString() == 'Error: Invalid ObjectId' || err.message.match('Cast to ObjectId failed for value "[^\\"]*" at path "_id"')
           callback(new Error('No such id'))
         else
           callback(err)
@@ -409,7 +414,7 @@ exports.create = ->
 
     model.findOne filter, (err, d) ->
       if err?
-        if err.message == 'Invalid ObjectId'
+        if err.message == 'Invalid ObjectId' || err.message.match('Cast to ObjectId failed for value "[^\\"]*" at path "_id"')
           callback(new Error("No such id"))
         else
           callback(err)
