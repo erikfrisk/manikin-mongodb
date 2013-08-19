@@ -4,6 +4,8 @@ mongojs = require 'mongojs'
 _ = require 'underscore'
 async = require 'async'
 
+locals = require './locals'
+
 manikin = require jscov.cover('..', 'lib', 'manikin-mongo')
 
 getConn = do ->
@@ -19,4 +21,5 @@ dropDatabase = (connStr, done) ->
     collNames = colls.map ({ name }) -> _(name.split('.')).last()
     async.forEach collNames.slice(1), conn.dropCollection.bind(conn), done
 
+locals.runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
 manikinSpec.runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
