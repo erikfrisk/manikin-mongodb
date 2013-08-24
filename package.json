@@ -14,9 +14,10 @@
   "scripts": {
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src",
-    "test": "mocha --compilers coffee:coffee-script --recursive spec && sh run-coveralls.sh",
+    "test": "mocha --compilers coffee:coffee-script --recursive spec && npm run travis-coverall",
     "coverage": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-term-cov-reporter spec",
-    "coveralls": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-lcov-reporter spec",
+    "coverall": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-lcov-reporter spec",
+    "travis-coverall": "if [ -n \"$TRAVIS\" ]; then npm run coverall | ./node_modules/coveralls/bin/coveralls.js src; fi",
     "prestart": "coffee -co lib src"
   },
   "dependencies": {
