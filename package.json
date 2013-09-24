@@ -27,6 +27,7 @@
     "async": ">= 0.1.0 < 3"
   },
   "devDependencies": {
+    "runr": ">= 0.4.3 < 0.5.0",
     "mocha-lcov-reporter": ">= 0.0.1 < 0.1.0",
     "coveralls": ">= 2.1.0 < 3",
     "manikin": ">= 0.1.0 < 0.2",
