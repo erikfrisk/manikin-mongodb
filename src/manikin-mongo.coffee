@@ -1,5 +1,3 @@
-"use strict"
-
 async = require 'async'
 _ = require 'underscore'
 tools = require 'manikin-tools'
@@ -92,7 +90,12 @@ exports.create = ->
   getMeta = (modelName) ->
     metaData[modelName]
 
-
+  isObjectId = (val) ->
+    try
+      ObjectID(val)
+      return true
+    catch
+      return false
 
   nullablesValidation = (schema) -> (next) ->
 
@@ -262,6 +265,34 @@ exports.create = ->
     toDef
 
 
+  getInvalidFields = (modelName, data) ->
+    model = models[modelName]
+    mixedFields = getMeta(modelName).fields.filter((x) -> x.type == 'mixed').map (x) -> x.name
+
+    inputFieldsValid = getKeys(_.omit(data, mixedFields))
+    inputFields = Object.keys data
+    validField = Object.keys(model.schema.paths)
+
+    vf = []
+    validField.forEach (x) ->
+      parts = x.split('.')
+      [1..parts.length].forEach (len) ->
+        vf.push(parts.slice(0, len).join('.'))
+
+    invalidFields = _.difference(inputFieldsValid, vf)
+
+
+  preprocessError = (err, msg) ->
+    regex = new RegExp('Cast to ObjectId failed for value "([^\\"]*)" at path "([^\\"]*)"')
+
+    if !err?
+      return err
+    else if err.toString() == 'Error: Invalid ObjectId' || err.message?.match(regex)
+      new Error(msg.replace('{path}', err.message?.match(regex)[2]))
+    else
+      err
+
+
 
   # Connecting
   # ==========
@@ -318,6 +349,11 @@ exports.create = ->
   # =====================
   api.post = (model, indata, callback) ->
 
+    invalidFields = getInvalidFields(model, indata)
+    if invalidFields.length > 0
+      callback(new Error("Invalid fields: " + invalidFields.join(', ')))
+      return
+
     saveFunc = (data) ->
       new models[model](data).save (err) ->
         if err && err.code == 11000
@@ -366,11 +402,7 @@ exports.create = ->
 
     models[model].findOne filter, (err, data) ->
       if err
-        if err.toString() == 'Error: Invalid ObjectId' || err.message.match('Cast to ObjectId failed for value "[^\\"]*" at path "_id"')
-          callback(new Error('No such id'))
-        else
-          callback(err)
-        return
+        callback(preprocessError(err, 'No such id'))
       else if !data?
         callback(new Error('No match'))
       else
@@ -381,10 +413,7 @@ exports.create = ->
 
     models[model].findOne filter, (err, d) ->
       if err
-        if err.toString() == 'Error: Invalid ObjectId' || err.message.match('Cast to ObjectId failed for value "[^\\"]*" at path "_id"')
-          callback(new Error('No such id'))
-        else
-          callback(err)
+        callback(preprocessError(err, 'No such id'))
       else if !d?
         callback(new Error('No such id'))
       else
@@ -392,21 +421,11 @@ exports.create = ->
           callback err, if !err then massage(d)
 
   api.putOne = (modelName, data, filter, callback) ->
-    filter = preprocFilter(filter)
-
     model = models[modelName]
-    mixedFields = getMeta(modelName).fields.filter((x) -> x.type == 'mixed').map (x) -> x.name
-    inputFieldsValid = getKeys(_.omit(data, mixedFields))
+    filter = preprocFilter(filter)
     inputFields = Object.keys data
-    validField = Object.keys(model.schema.paths)
 
-    vf = []
-    validField.forEach (x) ->
-      parts = x.split('.')
-      [1..parts.length].forEach (len) ->
-        vf.push(parts.slice(0, len).join('.'))
-
-    invalidFields = _.difference(inputFieldsValid, vf)
+    invalidFields = getInvalidFields(modelName, data)
 
     if invalidFields.length > 0
       callback(new Error("Invalid fields: " + invalidFields.join(', ')))
@@ -428,13 +447,16 @@ exports.create = ->
         d[key] = data[key]
 
       d.save (err) ->
-        callback(err, if err then null else massage(d))
+        callback(preprocessError(err, "Invalid hasOne-key for '{path}'"), if err then null else massage(d))
 
 
 
   # The many-to-many methods
   # ========================
   api.delMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
+
+    if !isObjectId(primaryId)
+      return callback(new Error("Could not find an instance of '#{primaryModel}' with id '#{primaryId}'"))
 
     mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
@@ -444,6 +466,9 @@ exports.create = ->
 
     secondaryModel = mm.ref
     inverseName = mm.inverseName
+
+    if !isObjectId(secondaryId)
+      return callback(new Error("Could not find an instance of '#{secondaryModel}' with id '#{secondaryId}'"))
 
     async.forEach [
       model: primaryModel
@@ -470,6 +495,10 @@ exports.create = ->
   insertOps = []
 
   api.postMany = (primaryModel, primaryId, propertyName, secondaryId, callback) ->
+
+    if !isObjectId(primaryId)
+      return callback(new Error("Could not find an instance of '#{primaryModel}' with id '#{primaryId}'"))
+
     mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
 
     if !mm?
@@ -478,6 +507,9 @@ exports.create = ->
 
     secondaryModel = mm.ref
     inverseName = mm.inverseName
+
+    if !isObjectId(secondaryId)
+      return callback(new Error("Could not find an instance of '#{secondaryModel}' with id '#{secondaryId}'"))
 
     insertOpNow = [
       { primaryModel: primaryModel, primaryId: primaryId, propertyName: propertyName, secondaryId: secondaryId }
@@ -531,12 +563,21 @@ exports.create = ->
 
   api.getMany = (primaryModel, primaryId, propertyName, filter, callback) ->
 
+    if !isObjectId(primaryId)
+      return callback(new Error("Could not find an instance of '#{primaryModel}' with id '#{primaryId}'"))
+
     # backwards compatibility
     if !callback?
       callback = filter
       filter = {}
 
-    {ref, inverseName} = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
+    mm = getMeta(primaryModel).manyToMany.filter((x) -> x.name == propertyName)[0]
+
+    if !mm?
+      callback(new Error('Invalid many-to-many property'))
+      return
+
+    {ref, inverseName} = mm
 
     ownerFilter = _.object([[inverseName, primaryId]])
     finalFilter = _.extend({}, filter, ownerFilter)
