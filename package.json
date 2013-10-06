@@ -4,6 +4,7 @@
   "version": "0.12.5",
   "main": "./lib/manikin-mongo.js",
   "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
+  "license" : "MIT",
   "repository": {
     "type": "git",
     "url": "http://github.com/jakobmattsson/manikin-mongodb.git"
