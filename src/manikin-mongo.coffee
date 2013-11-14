@@ -11,7 +11,7 @@ preprocFilter = (filter) ->
   x = _.extend({}, filter)
   x._id = x.id if x.id
   delete x.id
-  x
+  _.object _.pairs(x).map ([key, value]) -> [key, (if Array.isArray(value) then { $in: value } else value)]
 
 
 massageOne = (x) ->
