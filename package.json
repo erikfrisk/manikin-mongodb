@@ -23,7 +23,7 @@
     "runr": "^0.4.3",
     "mocha-lcov-reporter": "^0.0.1",
     "coveralls": "^2.1.0",
-    "manikin": "^0.3.3",
+    "manikin": "^0.4.0",
     "jscov": "^0.5.1",
     "mocha-term-cov-reporter": "^0.1.3",
     "mongojs": "^0.9.6",
@@ -34,7 +34,7 @@
   "scripts": {
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src",
-    "test": "mocha --compilers coffee:coffee-script --recursive spec && npm run travis-coverall",
+    "test": "mocha --compilers coffee:coffee-script --recursive spec  --grep \"$TESTS\" && npm run travis-coverall",
     "coverage": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-term-cov-reporter spec",
     "coverall": "jscov src .cov && JSCOV=.cov mocha --compilers coffee:coffee-script --recursive --reporter mocha-lcov-reporter spec",
     "travis-coverall": "if [ -n \"$TRAVIS\" ]; then npm run coverall | coveralls src; fi",

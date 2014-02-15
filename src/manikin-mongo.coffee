@@ -383,8 +383,8 @@ exports.create = ->
           indata[key] = ownerdata[key]
         saveFunc indata
 
-  api.list = (model, filter, callback) ->
-    filter = preprocFilter(filter)
+  api.list = (model, config, callback) ->
+    filter = preprocFilter(config.filter || {})
 
     monModel = specmodels[model]
 
@@ -393,8 +393,18 @@ exports.create = ->
     defaultSort = monModel.defaultSort
 
     rr = models[model].find(filter)
-    if defaultSort?
+
+    if config.sort
+      rr = rr.sort(config.sort)
+    else if defaultSort?
       rr = rr.sort _.object [[defaultSort, 'asc']]
+
+    if config.limit
+      rr = rr.limit(config.limit)
+
+    if config.skip
+      rr = rr.skip(config.skip)
+
     rr.exec(massaged(callback))
 
   api.getOne = (model, config, callback) ->
