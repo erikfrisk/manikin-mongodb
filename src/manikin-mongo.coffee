@@ -201,11 +201,6 @@ exports.create = ->
         specTransform(allspec, modelName, tgt[key], src[key], _.without(Object.keys(src[key]), 'type'))
       else if src[key].type == 'string'
         tgt[key] = _.extend({}, src[key], { type: String })
-
-        if src[key].validate?
-          tgt[key].validate = (value, callback) ->
-            src[key].validate(api, value, callback)
-
       else if src[key].type == 'number'
         tgt[key] = _.extend({}, src[key], { type: Number })
       else if src[key].type == 'date'
@@ -217,6 +212,10 @@ exports.create = ->
       else if src[key].type == 'hasMany'
         tgt[key] = [{ type: ObjectId, ref: src[key].model, inverseName: src[key].inverseName }]
         allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
+
+      if src[key].validate?
+        tgt[key].validate = (value, callback) ->
+          src[key].validate(api, value, callback)
 
 
 
