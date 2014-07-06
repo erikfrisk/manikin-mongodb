@@ -546,8 +546,12 @@ exports.create = ->
 
       updated = [false, false]
 
+      contains = (array, element) -> element in array
+
       insertOpNow.forEach (conf, i) ->
-        if -1 == datas[i][conf.propertyName].indexOf(conf.secondaryId)
+        return if !datas[i]? # This line is new. Not tested. Without it, things crash when given non-existing ids.
+
+        if !contains(datas[i][conf.propertyName], conf.secondaryId)
           datas[i][conf.propertyName].push(conf.secondaryId)
           updated[i] = true
 
