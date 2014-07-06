@@ -300,7 +300,16 @@ exports.create = ->
     lateLoadModel = null
     dbUrl = null
 
-    api.connect = (databaseUrl, inputModels, callback) ->
+    api.connect = (connInfo, inputModels, callback) ->
+      if typeof connInfo == 'string'
+        connInfo = {
+          url: connInfo
+          ssl: false
+        }
+
+      {url, ssl} = connInfo
+      databaseUrl = url
+
       if !callback? && typeof inputModels == 'function'
         callback = inputModels
         inputModels = lateLoadModel
@@ -308,14 +317,14 @@ exports.create = ->
       onConnected = _.once (err) ->
         return callback(err) if err?
 
-        dbUrl = databaseUrl
+        dbUrl = connInfo
         if inputModels
           api.load(inputModels, callback)
         else
           callback()
 
       try
-        connection = mongoose.createConnection(databaseUrl)
+        connection = mongoose.createConnection(databaseUrl, { server: { ssl: ssl } })
         connection.on 'error', (err) -> onConnected(err)
         connection.on 'connected', -> onConnected()
       catch ex
