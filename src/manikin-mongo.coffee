@@ -1,6 +1,7 @@
 async = require 'async'
 _ = require 'underscore'
 tools = require 'manikin-tools'
+troop = require 'mongoose-troop'
 
 
 
@@ -80,8 +81,16 @@ exports.create = ->
 
   # Mongoose- or state-dependent helpers
   # ====================================
-  makeModel = (connection, name, schema) ->
+  makeModel = (connection, name, schema, { updatedAtField, createdAtField }) ->
     ss = new Schema(schema, { strict: true })
+
+    if updatedAtField || createdAtField
+      ss.plugin(troop.timestamp, {
+        createdPath: createdAtField
+        modifiedPath: updatedAtField
+        useVirtual: false
+      })
+
     ss.set('versionKey', false)
     connection.model(name, ss, name)
 
@@ -345,7 +354,7 @@ exports.create = ->
         return
 
       defModels(inputModels).forEach ([name, v]) ->
-        models[name] = makeModel(connection, name, v.fields)
+        models[name] = makeModel(connection, name, v.fields, v)
         models[name].schema.pre 'save', nullablesValidation(models[name].schema)
         models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
         models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)

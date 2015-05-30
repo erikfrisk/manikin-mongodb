@@ -17,13 +17,14 @@
     "async": "^1.0.0",
     "manikin-tools": "^0.2.0",
     "mongoose": "4.0.4",
+    "mongoose-troop": "^0.0.8",
     "underscore": "^1.4.0"
   },
   "devDependencies": {
     "coffee-script": "1.9.3",
     "coveralls": "^2.1.0",
     "jscov": "^0.6.14",
-    "manikin": "^0.4.2",
+    "manikin": "^0.5.1",
     "mocha": "^1.7.4",
     "mocha-lcov-reporter": "^0.0.2",
     "mocha-term-cov-reporter": "^0.2.0",
