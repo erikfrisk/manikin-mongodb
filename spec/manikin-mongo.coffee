@@ -30,7 +30,14 @@ dropDatabase = do ->
       conn.collectionNames (err, colls) ->
         throw err if err
         collNames = colls.map ({ name }) -> _(name.split('.')).last()
-        async.forEach collNames.slice(1), conn.dropCollection.bind(conn), done
+        async.forEach collNames.slice(1), (collName, callback) ->
+          f = conn.dropCollection.bind(conn)
+          f collName, (err, rest...) ->
+            if !err || err?.errmsg == 'ns not found'
+              callback(null, rest...)
+            else
+              callback(err, rest...)
+        , done
 
 locals.runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
 manikinSpec.runTests(manikin, dropDatabase, 'mongodb://localhost/manikin-test')
