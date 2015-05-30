@@ -317,7 +317,7 @@ exports.create = ->
       onConnected = _.once (err) ->
         return callback(err) if err?
 
-        dbUrl = connInfo
+        dbUrl = url
         if inputModels
           api.load(inputModels, callback)
         else
@@ -555,7 +555,7 @@ exports.create = ->
 
       updated = [false, false]
 
-      contains = (array, element) -> element in array
+      contains = (array, element) -> array.indexOf(element) >= 0
 
       insertOpNow.forEach (conf, i) ->
         return if !datas[i]? # This line is new. Not tested. Without it, things crash when given non-existing ids.
