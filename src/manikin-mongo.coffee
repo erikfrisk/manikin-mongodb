@@ -333,7 +333,12 @@ exports.create = ->
           callback()
 
       try
-        connection = mongoose.createConnection(databaseUrl, { server: { ssl: ssl } })
+        connection = mongoose.createConnection(databaseUrl, {
+          server: {
+            sslValidate: false,
+            ssl: ssl
+          }
+        })
         connection.on 'error', (err) -> onConnected(err)
         connection.on 'connected', -> onConnected()
       catch ex
