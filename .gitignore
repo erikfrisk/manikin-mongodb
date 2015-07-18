@@ -4,6 +4,8 @@ lib
 test-coverage
 .cov
 
+*.sublime-workspace
+
 !.bowerrc
 !.travis.yml
 !.gitignore
