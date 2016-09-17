@@ -416,7 +416,7 @@ exports.create = ->
 
     rr = models[model].find(filter)
 
-    if config.sort
+    if config.sort && Object.keys(config.sort).length > 0
       rr = rr.sort(config.sort)
     else if defaultSort?
       rr = rr.sort _.object [[defaultSort, 'asc']]
