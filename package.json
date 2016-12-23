@@ -1,7 +1,7 @@
 {
   "name": "manikin-mongodb",
   "description": "Data model abstractions for MongoDB",
-  "version": "0.15.5",
+  "version": "0.15.6",
   "main": "./lib/manikin-mongo.js",
   "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
   "license": "MIT",
@@ -17,7 +17,6 @@
     "async": "^1.0.0",
     "manikin-tools": "^0.2.0",
     "mongoose": "4.0.4",
-    "mongoose-troop": "^0.0.8",
     "underscore": "^1.4.0"
   },
   "devDependencies": {

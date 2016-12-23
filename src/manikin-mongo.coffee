@@ -1,7 +1,6 @@
 async = require 'async'
 _ = require 'underscore'
 tools = require 'manikin-tools'
-troop = require 'mongoose-troop'
 
 
 
@@ -56,6 +55,41 @@ getKeys = (data, target = [], prefix = '') ->
 
 
 
+# Timestamp mongoose plugin from https://github.com/tblobaum/mongoose-troop
+# =============================================================================
+
+mongooseTroopTimestamp = (schema, options) ->
+  options or (options = {})
+
+  # Options
+  fields = {}
+  createdPath = options.createdPath or 'created'
+  modifiedPath = options.modifiedPath or 'modified'
+  useVirtual = if options.useVirtual != undefined then options.useVirtual else true
+  
+  # Add paths to schema if not present
+  if !schema.paths[createdPath]
+    fields[modifiedPath] = type: Date
+  if useVirtual
+    # Use the ObjectID for extracting the created time
+    schema.virtual(createdPath).get ->
+      new Date(@_id.generationTime * 1000)
+  else
+    if !schema.paths[createdPath]
+      fields[createdPath] =
+        type: Date
+        default: Date.now
+  schema.add fields
+  
+  # Update the modified timestamp on save
+  schema.pre 'save', (next) ->
+    @[modifiedPath] = new Date
+    next()
+    return
+  return
+
+
+
 # Manikin constructor
 # =============================================================================
 
@@ -85,7 +119,7 @@ exports.create = ->
     ss = new Schema(schema, { strict: true })
 
     if updatedAtField || createdAtField
-      ss.plugin(troop.timestamp, {
+      ss.plugin(mongooseTroopTimestamp, {
         createdPath: createdAtField
         modifiedPath: updatedAtField
         useVirtual: false
