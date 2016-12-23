@@ -1,5 +1,5 @@
 {
-  "name": "manikin-mongodb",
+  "name": "manikin-mongodb-erikfrisk",
   "description": "Data model abstractions for MongoDB",
   "version": "0.15.6",
   "main": "./lib/manikin-mongo.js",
@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "http://github.com/jakobmattsson/manikin-mongodb.git"
+    "url": "http://github.com/erikfrisk/manikin-mongodb.git"
   },
   "engines": {
     "node": ">= 0.10 < 0.13",
