@@ -1,8 +1,6 @@
 async = require 'async'
 _ = require 'underscore'
 tools = require 'manikin-tools'
-mongoose = require 'mongoose'
-bluebird = require 'bluebird'
 
 
 
@@ -96,6 +94,14 @@ mongooseTroopTimestamp = (schema, options) ->
 # =============================================================================
 
 exports.create = ->
+
+  # Silly hack to make this project testable without caching gotchas
+  if process.env.NODE_ENV != 'production'
+    for key of require.cache
+      delete require.cache[key]
+
+  mongoose = require 'mongoose'
+  bluebird = require 'bluebird'
 
   # Shorthands for some moongoose types
   Schema = mongoose.Schema
