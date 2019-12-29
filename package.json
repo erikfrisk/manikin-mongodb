@@ -17,7 +17,8 @@
     "async": "^1.0.0",
     "manikin-tools": "^0.2.0",
     "mongoose": "5.7.5",
-    "underscore": "^1.4.0"
+    "underscore": "^1.4.0",
+    "bluebird": "^3.7.2"
   },
   "devDependencies": {
     "coffee-script": "1.9.3",
