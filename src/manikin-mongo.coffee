@@ -1,6 +1,8 @@
 async = require 'async'
 _ = require 'underscore'
 tools = require 'manikin-tools'
+mongoose = require 'mongoose'
+bluebird = require 'bluebird'
 
 
 
@@ -95,18 +97,13 @@ mongooseTroopTimestamp = (schema, options) ->
 
 exports.create = ->
 
-  # Silly hack to make this project testable without caching gotchas
-  if process.env.NODE_ENV != 'production'
-    for key of require.cache
-      delete require.cache[key]
-  mongoose = require 'mongoose'
-
-
   # Shorthands for some moongoose types
   Schema = mongoose.Schema
   Mixed = mongoose.Schema.Types.Mixed
   ObjectID = mongoose.mongo.ObjectID  # Yes, they seriously have two different objects with
   ObjectId = mongoose.Schema.ObjectId # the same name but with different casings. Idiots...
+
+  mongoose.Promise = bluebird
 
   api = {}
   models = {}
@@ -117,6 +114,11 @@ exports.create = ->
   # ====================================
   makeModel = (connection, name, schema, { updatedAtField, createdAtField }) ->
     ss = new Schema(schema, { strict: true })
+
+    ss.pre 'save', nullablesValidation(ss)
+    ss.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
+    ss.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
+    ss.pre 'save',   (next) -> preSaveHasOne(models[name], this, next)
 
     if updatedAtField || createdAtField
       ss.plugin(mongooseTroopTimestamp, {
@@ -201,7 +203,7 @@ exports.create = ->
 
     async.forEach manys, (many, callback) ->
       obj = _.object([[many.inverseName, id]])
-      models[many.ref].update(obj, { $pull: obj }, callback)
+      models[many.ref].updateMany(obj, { $pull: obj }, callback)
     , (err) ->
       return next(err) if err # what to do on error?
 
@@ -257,8 +259,8 @@ exports.create = ->
         allspec[src[key].model][src[key].inverseName] = [{ type: ObjectId, ref: modelName, inverseName: key }]
 
       if src[key].validate?
-        tgt[key].validate = (value, callback) ->
-          src[key].validate(api, value, callback)
+        tgt[key].validate = (value) ->
+          src[key].validate(api, value)
 
 
 
@@ -367,11 +369,13 @@ exports.create = ->
           callback()
 
       try
+        mongoose.set('useUnifiedTopology', true)
+        mongoose.set('useNewUrlParser', true)
+        mongoose.set('useCreateIndex', true)
+        mongoose.set('useFindAndModify', false)
         connection = mongoose.createConnection(databaseUrl, {
-          server: {
-            sslValidate: false,
-            ssl: ssl
-          }
+          sslValidate: false,
+          ssl: ssl
         })
         connection.on 'error', (err) -> onConnected(err)
         connection.on 'connected', -> onConnected()
@@ -394,10 +398,6 @@ exports.create = ->
 
       defModels(inputModels).forEach ([name, v]) ->
         models[name] = makeModel(connection, name, v.fields, v)
-        models[name].schema.pre 'save', nullablesValidation(models[name].schema)
-        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNonNullable(models[name], this._id.toString(), next)
-        models[name].schema.pre 'remove', (next) -> preRemoveCascadeNullable(models[name], this._id.toString(), next)
-        models[name].schema.pre 'save',   (next) -> preSaveHasOne(models[name], this, next)
       callback()
 
 
@@ -552,7 +552,7 @@ exports.create = ->
         conditions = { _id: item.id }
         update = { $pull: _.object([[item.property, item.secondaryId]]) }
         options = { }
-        models[item.model].update conditions, update, options, (err, numAffected) ->
+        models[item.model].updateMany conditions, update, options, (err, numAffected) ->
           callback(err)
 
     , callback
